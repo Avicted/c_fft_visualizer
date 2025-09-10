@@ -7,6 +7,11 @@ Visualize the Fast Fourier Transform (FFT) of audio signals in real-time using C
 - [Raylib](https://www.raylib.com/)
 - [FFTW3](http://www.fftw.org/)
 
+Arch Linux:
+```bash
+sudo pacman -S clang raylib fftw
+```
+
 
 ## Build and run
 ```bash
