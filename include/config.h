@@ -1,0 +1,21 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define WINDOW_WIDTH 1280
+#define WINDOW_HEIGHT 720
+#define FFT_WINDOW_SIZE 1024
+#define BAR_PIXEL_WIDTH 1
+#define FRACTIONAL_OCTAVE (1.0 / 48.0)
+#define DB_TOP 0.0
+#define DB_BOTTOM -96.0
+#define PEAK_DECAY_DB_PER_SEC 3.0
+#define LERP_SPEED 0.20
+#define EPSILON_POWER 1e-12
+#define BAR_GRADIENT_BOTTOM (Color){255, 100, 0, 255}
+#define BAR_GRADIENT_TOP (Color){255, 255, 0, 255}
+#define MARGIN_LEFT 60
+#define MARGIN_RIGHT 20
+#define MARGIN_TOP 28
+#define MARGIN_BOTTOM 48
+
+#endif
