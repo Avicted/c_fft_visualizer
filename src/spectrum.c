@@ -15,7 +15,7 @@ calc_num_bars_for_width(int w)
 }
 
 static void
-update_plot_rect(spectrum_state *s)
+update_plot_rect(spectrum_state_t *s)
 {
     int sw = GetScreenWidth();
     int sh = GetScreenHeight();
@@ -43,7 +43,7 @@ create_gradient_texture(int h)
 }
 
 static int
-allocate_bars(spectrum_state *s, int num)
+allocate_bars(spectrum_state_t *s, int num)
 {
     s->bar_target = (double *)calloc(num, sizeof(double));
     s->bar_smoothed = (double *)calloc(num, sizeof(double));
@@ -69,7 +69,7 @@ allocate_bars(spectrum_state *s, int num)
 }
 
 static void
-free_bars(spectrum_state *s)
+free_bars(spectrum_state_t *s)
 {
     free(s->bar_target);
     free(s->bar_smoothed);
@@ -80,7 +80,7 @@ free_bars(spectrum_state *s)
 }
 
 static int
-reallocate_bars_if_needed(spectrum_state *s)
+reallocate_bars_if_needed(spectrum_state_t *s)
 {
     int new_num = calc_num_bars_for_width(s->plot_width);
     if (new_num < 2)
@@ -136,7 +136,7 @@ reallocate_bars_if_needed(spectrum_state *s)
     return 1;
 }
 
-void spectrum_init(spectrum_state *s, Wave *wave, Font font)
+void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
 {
     memset(s, 0, sizeof(*s));
     s->fft_bins = FFT_WINDOW_SIZE / 2 + 1;
@@ -155,7 +155,7 @@ void spectrum_init(spectrum_state *s, Wave *wave, Font font)
     s->last_height = GetScreenHeight();
 }
 
-void spectrum_destroy(spectrum_state *s)
+void spectrum_destroy(spectrum_state_t *s)
 {
     if (s->gradient_tex.id)
     {
@@ -172,19 +172,19 @@ void spectrum_destroy(spectrum_state *s)
     }
 }
 
-void spectrum_set_total_windows(spectrum_state *s, int total)
+void spectrum_set_total_windows(spectrum_state_t *s, int total)
 {
     s->total_windows = total;
     s->window_index = 0;
     s->accumulator = 0.0;
 }
 
-int spectrum_done(const spectrum_state *s)
+int spectrum_done(const spectrum_state_t *s)
 {
     return s->window_index >= s->total_windows;
 }
 
-void spectrum_handle_resize(spectrum_state *s)
+void spectrum_handle_resize(spectrum_state_t *s)
 {
     int sw = GetScreenWidth();
     int sh = GetScreenHeight();
@@ -211,7 +211,7 @@ void spectrum_handle_resize(spectrum_state *s)
 }
 
 static void
-compute_fft_window(spectrum_state *s, float *samples, Wave *wave)
+compute_fft_window(spectrum_state_t *s, float *samples, Wave *wave)
 {
     int start_index = s->window_index * FFT_WINDOW_SIZE * wave->channels;
     for (int i = 0; i < FFT_WINDOW_SIZE; i++)
@@ -239,7 +239,7 @@ compute_fft_window(spectrum_state *s, float *samples, Wave *wave)
 }
 
 static void
-compute_bar_targets(spectrum_state *s, int sample_rate)
+compute_bar_targets(spectrum_state_t *s, int sample_rate)
 {
     for (int b = 0; b < s->num_bars; b++)
     {
@@ -284,7 +284,7 @@ compute_bar_targets(spectrum_state *s, int sample_rate)
 }
 
 static void
-smooth_bars(spectrum_state *s)
+smooth_bars(spectrum_state_t *s)
 {
     for (int b = 0; b < s->num_bars; b++)
     {
@@ -293,7 +293,7 @@ smooth_bars(spectrum_state *s)
 }
 
 static void
-update_peaks(spectrum_state *s, double dt)
+update_peaks(spectrum_state_t *s, double dt)
 {
     double decay_factor = pow(10.0, -PEAK_DECAY_DB_PER_SEC * dt / 10.0);
     for (int b = 0; b < s->num_bars; b++)
@@ -313,7 +313,7 @@ update_peaks(spectrum_state *s, double dt)
     }
 }
 
-void spectrum_update(spectrum_state *s, Wave *wave, float *samples, double dt)
+void spectrum_update(spectrum_state_t *s, Wave *wave, float *samples, double dt)
 {
     if (spectrum_done(s))
     {
@@ -333,7 +333,7 @@ void spectrum_update(spectrum_state *s, Wave *wave, float *samples, double dt)
     update_peaks(s, dt);
 }
 
-void spectrum_render_to_texture(spectrum_state *s)
+void spectrum_render_to_texture(spectrum_state_t *s)
 {
     BeginTextureMode(s->fft_rt);
     ClearBackground(BLACK);

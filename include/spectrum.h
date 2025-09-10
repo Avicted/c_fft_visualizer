@@ -5,7 +5,7 @@
 #include <fftw3.h>
 #include "config.h"
 
-typedef struct spectrum_state
+typedef struct spectrum_state_t
 {
     double fft_in[FFT_WINDOW_SIZE];
     fftw_complex fft_out[FFT_WINDOW_SIZE / 2 + 1];
@@ -37,14 +37,14 @@ typedef struct spectrum_state
     int plot_width;
     int plot_height;
     Font font;
-} spectrum_state;
+} spectrum_state_t;
 
-void spectrum_init(spectrum_state *s, Wave *wave, Font font);
-void spectrum_destroy(spectrum_state *s);
-void spectrum_set_total_windows(spectrum_state *s, int total);
-int spectrum_done(const spectrum_state *s);
-void spectrum_handle_resize(spectrum_state *s);
-void spectrum_update(spectrum_state *s, Wave *wave, float *samples, double dt);
-void spectrum_render_to_texture(spectrum_state *s);
+void spectrum_init(spectrum_state_t *s, Wave *wave, Font font);
+void spectrum_destroy(spectrum_state_t *s);
+void spectrum_set_total_windows(spectrum_state_t *s, int total);
+int spectrum_done(const spectrum_state_t *s);
+void spectrum_handle_resize(spectrum_state_t *s);
+void spectrum_update(spectrum_state_t *s, Wave *wave, float *samples, double dt);
+void spectrum_render_to_texture(spectrum_state_t *s);
 
 #endif

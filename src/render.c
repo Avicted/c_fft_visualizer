@@ -2,7 +2,7 @@
 #include "render.h"
 
 static int
-freq_to_bar_index(const spectrum_state *s, double f)
+freq_to_bar_index(const spectrum_state_t *s, double f)
 {
     if (f < s->f_min)
     {
@@ -29,7 +29,7 @@ freq_to_bar_index(const spectrum_state *s, double f)
 }
 
 static void
-draw_db_grid(const spectrum_state *s)
+draw_db_grid(const spectrum_state_t *s)
 {
     for (double dB = DB_BOTTOM; dB <= DB_TOP; dB += 12.0)
     {
@@ -50,7 +50,7 @@ draw_db_grid(const spectrum_state *s)
 }
 
 static void
-draw_freq_grid(const spectrum_state *s)
+draw_freq_grid(const spectrum_state_t *s)
 {
     static const double freqs[] = {20, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000};
     int nf = (int)(sizeof(freqs) / sizeof(freqs[0]));
@@ -101,7 +101,7 @@ draw_freq_grid(const spectrum_state *s)
 }
 
 static void
-draw_overlay(const spectrum_state *s)
+draw_overlay(const spectrum_state_t *s)
 {
     char *title = "Oct smoothing";
     char oct_smoothing_str[32];
@@ -113,7 +113,7 @@ draw_overlay(const spectrum_state *s)
     DrawTextEx(s->font, final_str, (Vector2){80, 16}, 20, 0, WHITE);
 }
 
-void render_draw(const spectrum_state *s)
+void render_draw(const spectrum_state_t *s)
 {
     DrawTexturePro(s->fft_rt.texture,
                    (Rectangle){0, 0, (float)s->fft_rt.texture.width, (float)-s->fft_rt.texture.height},

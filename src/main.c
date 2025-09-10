@@ -6,15 +6,58 @@
 #include "spectrum.c"
 #include "render.c"
 
+typedef struct application_state_t
+{
+    int is_running;
+    int is_fullscreen;
+    int windowed_w;
+    int windowed_h;
+    int loop_flag;
+
+    Font main_font;
+
+    spectrum_state_t spectrum_state;
+} application_state_t;
+
+static void
+handle_input(application_state_t *application_state)
+{
+    if (IsKeyPressed(KEY_F11))
+    {
+        if (IsWindowFullscreen())
+        {
+            ToggleFullscreen();
+            SetWindowSize(application_state->windowed_w, application_state->windowed_h);
+        }
+        else
+        {
+            application_state->windowed_w = GetScreenWidth();
+            application_state->windowed_h = GetScreenHeight();
+            int monitor = GetCurrentMonitor();
+            int mw = GetMonitorWidth(monitor);
+            int mh = GetMonitorHeight(monitor);
+            SetWindowSize(mw, mh);
+            ToggleFullscreen();
+        }
+        spectrum_handle_resize(&application_state->spectrum_state);
+    }
+}
+
 int main(int argc, char **argv)
 {
+    application_state_t *application_state = (application_state_t *)calloc(1, sizeof(application_state_t));
+    if (!application_state)
+    {
+        fprintf(stderr, "Failed to allocate application state\n");
+        return 1;
+    }
+
     const char *input_file = NULL;
-    int loop_flag = 0;
     for (int i = 1; i < argc; i++)
     {
         if (strcmp(argv[i], "--loop") == 0 || strcmp(argv[i], "-l") == 0)
         {
-            loop_flag = 1;
+            application_state->loop_flag = 1;
         }
         else if (!input_file)
         {
@@ -33,7 +76,8 @@ int main(int argc, char **argv)
     SetTargetFPS(60);
     SetWindowIcon(LoadImage("assets/icon.png"));
 
-    Font main_font = LoadFontEx("assets/fonts/retro-pixel-arcade.ttf", 64, 0, 250);
+    application_state->main_font = LoadFontEx("assets/fonts/retro-pixel-arcade.ttf", 64, 0, 250);
+
     Wave wave = LoadWave(input_file);
     if (wave.frameCount == 0)
     {
@@ -47,58 +91,39 @@ int main(int argc, char **argv)
     PlaySound(sound);
 
     float *samples = LoadWaveSamples(wave);
-    spectrum_state state;
-    spectrum_init(&state, &wave, main_font);
-    spectrum_set_total_windows(&state, wave.frameCount / FFT_WINDOW_SIZE);
+    spectrum_init(&application_state->spectrum_state, &wave, application_state->main_font);
+    spectrum_set_total_windows(&application_state->spectrum_state, wave.frameCount / FFT_WINDOW_SIZE);
 
-    int windowed_w = WINDOW_WIDTH;
-    int windowed_h = WINDOW_HEIGHT;
+    application_state->windowed_w = WINDOW_WIDTH;
+    application_state->windowed_h = WINDOW_HEIGHT;
 
     while (!WindowShouldClose())
     {
         double dt = GetFrameTime();
 
-        if (IsKeyPressed(KEY_F11))
-        {
-            if (IsWindowFullscreen())
-            {
-                ToggleFullscreen();
-                SetWindowSize(windowed_w, windowed_h);
-            }
-            else
-            {
-                windowed_w = GetScreenWidth();
-                windowed_h = GetScreenHeight();
-                int monitor = GetCurrentMonitor();
-                int mw = GetMonitorWidth(monitor);
-                int mh = GetMonitorHeight(monitor);
-                SetWindowSize(mw, mh);
-                ToggleFullscreen();
-            }
-            spectrum_handle_resize(&state);
-        }
+        handle_input(application_state);
 
-        spectrum_handle_resize(&state);
-        spectrum_update(&state, &wave, samples, dt);
-        spectrum_render_to_texture(&state);
+        spectrum_handle_resize(&application_state->spectrum_state);
+        spectrum_update(&application_state->spectrum_state, &wave, samples, dt);
+        spectrum_render_to_texture(&application_state->spectrum_state);
 
-        if (!loop_flag && spectrum_done(&state))
+        if (!application_state->loop_flag && spectrum_done(&application_state->spectrum_state))
         {
             break;
         }
-        if (loop_flag && spectrum_done(&state))
+        if (application_state->loop_flag && spectrum_done(&application_state->spectrum_state))
         {
-            state.window_index = 0;
-            state.accumulator = 0.0;
+            application_state->spectrum_state.window_index = 0;
+            application_state->spectrum_state.accumulator = 0.0;
         }
-        if (loop_flag && !IsSoundPlaying(sound))
+        if (application_state->loop_flag && !IsSoundPlaying(sound))
         {
             PlaySound(sound);
         }
 
         BeginDrawing();
         ClearBackground(BLACK);
-        render_draw(&state);
+        render_draw(&application_state->spectrum_state);
         EndDrawing();
     }
 
@@ -106,9 +131,11 @@ int main(int argc, char **argv)
     UnloadWave(wave);
     StopSound(sound);
     UnloadSound(sound);
-    spectrum_destroy(&state);
+    spectrum_destroy(&application_state->spectrum_state);
     CloseAudioDevice();
     CloseWindow();
+
+    free(application_state);
 
     return 0;
 }

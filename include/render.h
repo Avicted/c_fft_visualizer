@@ -3,6 +3,6 @@
 
 #include "spectrum.h"
 
-void render_draw(const spectrum_state *s);
+void render_draw(const spectrum_state_t *s);
 
 #endif
