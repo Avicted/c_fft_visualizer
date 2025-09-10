@@ -31,6 +31,7 @@ int main(int argc, char **argv)
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "FFT Visualizer");
     InitAudioDevice();
     SetTargetFPS(60);
+    SetWindowIcon(LoadImage("assets/icon.png"));
 
     Font main_font = LoadFontEx("assets/fonts/retro-pixel-arcade.ttf", 64, 0, 250);
     Wave wave = LoadWave(input_file);

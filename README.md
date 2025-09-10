@@ -20,5 +20,9 @@ sudo pacman -S clang raylib fftw
 ./build/c_fft_visualizer <path_to_audio_file> <--loop (optional)>
 ```
 
+
+## Screenshot
+![screenshot](assets/screenshot.png)
+
 ## License
 MIT License
