@@ -7,7 +7,7 @@ mkdir -p ./build
 
 CC=clang
 CFLAGS="-std=c99 -ggdb -O0 -Wall -Wextra -Werror"
-LDLIBS="-lm -lraylib"
+LDLIBS="-lm -lraylib -lfftw3"
 
 SRC_FILES=(
   "./src/main.c"
