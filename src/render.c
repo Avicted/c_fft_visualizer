@@ -31,12 +31,11 @@ freq_to_bar_index(const spectrum_state *s, double f)
 static void
 draw_db_grid(const spectrum_state *s)
 {
-    Color grid_color = (Color){40, 40, 40, 96};
     for (double dB = DB_BOTTOM; dB <= DB_TOP; dB += 12.0)
     {
         double norm = (dB - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
         int y = s->plot_top + (int)(s->plot_height - norm * s->plot_height);
-        DrawLine(s->plot_left, y, s->plot_left + s->plot_width, y, grid_color);
+        DrawLine(s->plot_left, y, s->plot_left + s->plot_width, y, GRID_COLOR);
 
         char label[16];
         snprintf(label, sizeof(label), "%.0f", dB);
@@ -55,7 +54,6 @@ draw_freq_grid(const spectrum_state *s)
 {
     static const double freqs[] = {20, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000};
     int nf = (int)(sizeof(freqs) / sizeof(freqs[0]));
-    Color grid_color = (Color){40, 40, 40, 96};
     int last_x = -9999;
     for (int i = 0; i < nf; i++)
     {
@@ -73,7 +71,7 @@ draw_freq_grid(const spectrum_state *s)
         }
 
         last_x = x;
-        DrawLine(x, s->plot_top, x, s->plot_top + s->plot_height, grid_color);
+        DrawLine(x, s->plot_top, x, s->plot_top + s->plot_height, GRID_COLOR);
         if (i % 2 == 0)
         {
             char label[16];

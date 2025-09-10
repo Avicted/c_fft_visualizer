@@ -11,10 +11,13 @@
 #define PEAK_DECAY_DB_PER_SEC 3.0
 #define LERP_SPEED 0.20
 #define EPSILON_POWER 1e-12
-#define BAR_GRADIENT_BOTTOM (Color){255, 100, 0, 255}
-#define BAR_GRADIENT_TOP (Color){255, 255, 0, 255}
-// #define BAR_GRADIENT_BOTTOM (Color){0, 32, 255, 255}
-// #define BAR_GRADIENT_TOP (Color){0, 255, 255, 255}
+
+#define GRID_COLOR (Color){40, 40, 40, 96}
+#define BAR_GRADIENT_BOTTOM_COLOR (Color){255, 100, 0, 255}
+#define BAR_GRADIENT_TOP_COLOR (Color){255, 255, 0, 255}
+// #define BAR_GRADIENT_BOTTOM_COLOR (Color){0, 32, 255, 255}
+// #define BAR_GRADIENT_TOP_COLOR (Color){0, 255, 255, 255}
+
 #define MARGIN_LEFT 60
 #define MARGIN_RIGHT 20
 #define MARGIN_TOP 64

@@ -97,7 +97,7 @@ int main(int argc, char **argv)
         }
 
         BeginDrawing();
-        ClearBackground((Color){18, 18, 18, 255});
+        ClearBackground(BLACK);
         render_draw(&state);
         EndDrawing();
     }

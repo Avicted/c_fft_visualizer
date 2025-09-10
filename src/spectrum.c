@@ -36,7 +36,7 @@ update_plot_rect(spectrum_state *s)
 static Texture2D
 create_gradient_texture(int h)
 {
-    Image img = GenImageGradientLinear(1, h, 0, BAR_GRADIENT_TOP, BAR_GRADIENT_BOTTOM);
+    Image img = GenImageGradientLinear(1, h, 0, BAR_GRADIENT_TOP_COLOR, BAR_GRADIENT_BOTTOM_COLOR);
     Texture2D tex = LoadTextureFromImage(img);
     UnloadImage(img);
     return tex;
@@ -336,7 +336,7 @@ void spectrum_update(spectrum_state *s, Wave *wave, float *samples, double dt)
 void spectrum_render_to_texture(spectrum_state *s)
 {
     BeginTextureMode(s->fft_rt);
-    ClearBackground((Color){0, 0, 0, 0});
+    ClearBackground(BLACK);
     int h = s->plot_height;
     for (int b = 0; b < s->num_bars; b++)
     {
@@ -363,7 +363,7 @@ void spectrum_render_to_texture(spectrum_state *s)
         DrawTexturePro(s->gradient_tex, src, dst, (Vector2){0, 0}, 0.0f, WHITE);
     }
 
-    Color peak_color = (Color){BAR_GRADIENT_TOP.r, BAR_GRADIENT_TOP.g, BAR_GRADIENT_TOP.b, 200};
+    Color peak_color = (Color){BAR_GRADIENT_TOP_COLOR.r, BAR_GRADIENT_TOP_COLOR.g, BAR_GRADIENT_TOP_COLOR.b, 200};
     for (int b = 0; b < s->num_bars; b++)
     {
         double p = s->peak_power[b];
