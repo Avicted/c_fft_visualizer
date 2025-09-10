@@ -1,0 +1,7 @@
+main
+
+build/
+.vscode/settings.json
+
+*.wav
+*.mp3

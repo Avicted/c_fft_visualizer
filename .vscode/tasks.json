@@ -1,0 +1,20 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run build.sh",
+            "type": "shell",
+            "command": "${workspaceFolder}/build.sh",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Shell script to run build"
+        }
+    ]
+}
