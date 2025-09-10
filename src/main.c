@@ -17,52 +17,15 @@ int main(int argc, char **argv)
     }
 
     const char *input_file = NULL;
-    for (int i = 1; i < argc; i++)
-    {
-        if (strcmp(argv[i], "--loop") == 0 || strcmp(argv[i], "-l") == 0)
-        {
-            app_state->loop_flag = 1;
-        }
-        else if (!input_file)
-        {
-            input_file = argv[i];
-        }
-    }
-    if (!input_file)
-    {
-        fprintf(stderr, "Usage: %s <wav file> [--loop]\n", argv[0]);
-        return 1;
-    }
+    app_parse_input_args(argc, argv, (char **)&input_file, &app_state->loop_flag);
 
-    app_platform_init();
+    app_platform_init(app_state);
 
-    app_state->main_font = LoadFontEx("assets/fonts/retro-pixel-arcade.ttf", 64, 0, 250);
-    app_state->windowed_w = WINDOW_WIDTH;
-    app_state->windowed_h = WINDOW_HEIGHT;
-
-    app_state->wave = LoadWave(input_file);
-    if (app_state->wave.frameCount == 0)
+    int load_result = app_load_audio_data(app_state, input_file);
+    if (load_result != 0)
     {
-        fprintf(stderr, "Failed to load WAV: %s\n", input_file);
         app_cleanup(app_state);
-        return 1;
-    }
-
-    app_state->sound = LoadSound(input_file);
-    if (app_state->sound.frameCount == 0)
-    {
-        fprintf(stderr, "Failed to load sound: %s\n", input_file);
-        app_cleanup(app_state);
-        return 1;
-    }
-
-    PlaySound(app_state->sound);
-    app_state->samples = LoadWaveSamples(app_state->wave);
-    if (!app_state->samples)
-    {
-        fprintf(stderr, "Failed to load wave samples: %s\n", input_file);
-        app_cleanup(app_state);
-        return 1;
+        return load_result;
     }
 
     spectrum_init(&app_state->spectrum_state, &app_state->wave, app_state->main_font);
