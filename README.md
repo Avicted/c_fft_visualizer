@@ -1,10 +1,19 @@
-# Basic C template project structure
+# C FFT Visualizer
 
-This project is a simple C template that can be used as a starting point for C projects.
-The project has been setup to use Clang as the compiler and includes a basic build script.
+Visualize the Fast Fourier Transform (FFT) of audio signals in real-time using C, Raylib, and FFTW3.
 
-A Visual Studio Code configuration is also provided for easy debugging and development.
+## Requirements
+- C Compiler
+- [Raylib](https://www.raylib.com/)
+- [FFTW3](http://www.fftw.org/)
 
+
+## Build and run
+```bash
+./build.sh
+
+./build/c_fft_visualizer <path_to_audio_file>
+```
 
 ## License
 MIT License
