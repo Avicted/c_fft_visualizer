@@ -67,14 +67,33 @@ void app_run(app_state_t *app_state)
 
 void app_cleanup(app_state_t *app_state)
 {
-    UnloadFont(app_state->main_font);
-    UnloadWaveSamples(app_state->samples);
-    UnloadWave(app_state->wave);
-    StopSound(app_state->sound);
-    UnloadSound(app_state->sound);
+    if (app_state->main_font.texture.id != 0)
+    {
+        UnloadFont(app_state->main_font);
+    }
+
+    if (app_state->samples)
+    {
+        UnloadWaveSamples(app_state->samples);
+    }
+
+    if (app_state->wave.data)
+    {
+        UnloadWave(app_state->wave);
+    }
+
+    if (app_state->sound.stream.buffer)
+    {
+        StopSound(app_state->sound);
+        UnloadSound(app_state->sound);
+    }
+
     spectrum_destroy(&app_state->spectrum_state);
     CloseAudioDevice();
     CloseWindow();
 
-    free(app_state);
+    if (app_state)
+    {
+        free(app_state);
+    }
 }

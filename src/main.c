@@ -44,8 +44,7 @@ int main(int argc, char **argv)
     if (app_state->wave.frameCount == 0)
     {
         fprintf(stderr, "Failed to load WAV: %s\n", input_file);
-        CloseAudioDevice();
-        CloseWindow();
+        app_cleanup(app_state);
         return 1;
     }
 
@@ -53,9 +52,7 @@ int main(int argc, char **argv)
     if (app_state->sound.frameCount == 0)
     {
         fprintf(stderr, "Failed to load sound: %s\n", input_file);
-        UnloadWave(app_state->wave);
-        CloseAudioDevice();
-        CloseWindow();
+        app_cleanup(app_state);
         return 1;
     }
 
@@ -64,10 +61,7 @@ int main(int argc, char **argv)
     if (!app_state->samples)
     {
         fprintf(stderr, "Failed to load wave samples: %s\n", input_file);
-        UnloadSound(app_state->sound);
-        UnloadWave(app_state->wave);
-        CloseAudioDevice();
-        CloseWindow();
+        app_cleanup(app_state);
         return 1;
     }
 
