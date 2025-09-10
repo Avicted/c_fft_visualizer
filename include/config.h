@@ -13,9 +13,11 @@
 #define EPSILON_POWER 1e-12
 #define BAR_GRADIENT_BOTTOM (Color){255, 100, 0, 255}
 #define BAR_GRADIENT_TOP (Color){255, 255, 0, 255}
+// #define BAR_GRADIENT_BOTTOM (Color){0, 32, 255, 255}
+// #define BAR_GRADIENT_TOP (Color){0, 255, 255, 255}
 #define MARGIN_LEFT 60
 #define MARGIN_RIGHT 20
-#define MARGIN_TOP 28
+#define MARGIN_TOP 64
 #define MARGIN_BOTTOM 48
 
 #endif

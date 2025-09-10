@@ -12,7 +12,7 @@ Visualize the Fast Fourier Transform (FFT) of audio signals in real-time using C
 ```bash
 ./build.sh
 
-./build/c_fft_visualizer <path_to_audio_file>
+./build/c_fft_visualizer <path_to_audio_file> <--loop (optional)>
 ```
 
 ## License

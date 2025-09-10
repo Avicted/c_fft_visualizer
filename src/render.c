@@ -105,7 +105,14 @@ draw_freq_grid(const spectrum_state *s)
 static void
 draw_overlay(const spectrum_state *s)
 {
-    DrawTextEx(s->font, "1/48 Oct smoothing.", (Vector2){80, 4}, 20, 0, WHITE);
+    char *title = "Oct smoothing";
+    char oct_smoothing_str[32];
+    int denominator = (int)(1.0 / FRACTIONAL_OCTAVE + 0.5); // Calculate denominator dynamically
+    snprintf(oct_smoothing_str, sizeof(oct_smoothing_str), "1/%d", denominator);
+    char final_str[64];
+    snprintf(final_str, sizeof(final_str), "%s: %s", title, oct_smoothing_str);
+
+    DrawTextEx(s->font, final_str, (Vector2){80, 16}, 20, 0, WHITE);
 }
 
 void render_draw(const spectrum_state *s)

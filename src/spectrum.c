@@ -363,7 +363,7 @@ void spectrum_render_to_texture(spectrum_state *s)
         DrawTexturePro(s->gradient_tex, src, dst, (Vector2){0, 0}, 0.0f, WHITE);
     }
 
-    Color peak_color = (Color){BAR_GRADIENT_TOP.r, BAR_GRADIENT_TOP.g, BAR_GRADIENT_TOP.b, 160};
+    Color peak_color = (Color){BAR_GRADIENT_TOP.r, BAR_GRADIENT_TOP.g, BAR_GRADIENT_TOP.b, 200};
     for (int b = 0; b < s->num_bars; b++)
     {
         double p = s->peak_power[b];

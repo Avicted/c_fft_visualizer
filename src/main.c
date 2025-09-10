@@ -1,27 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <raylib.h>
 
 #include "spectrum.c"
 #include "render.c"
 
-static const char *
-read_input_file_path(int argc, char **argv)
-{
-    if (argc >= 2)
-    {
-        return argv[1];
-    }
-
-    return NULL;
-}
-
 int main(int argc, char **argv)
 {
-    const char *input_file = read_input_file_path(argc, argv);
+    const char *input_file = NULL;
+    int loop_flag = 0;
+    for (int i = 1; i < argc; i++)
+    {
+        if (strcmp(argv[i], "--loop") == 0 || strcmp(argv[i], "-l") == 0)
+        {
+            loop_flag = 1;
+        }
+        else if (!input_file)
+        {
+            input_file = argv[i];
+        }
+    }
     if (!input_file)
     {
-        fprintf(stderr, "Usage: %s <wav file>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <wav file> [--loop]\n", argv[0]);
         return 1;
     }
 
@@ -48,12 +50,51 @@ int main(int argc, char **argv)
     spectrum_init(&state, &wave, main_font);
     spectrum_set_total_windows(&state, wave.frameCount / FFT_WINDOW_SIZE);
 
-    while (!WindowShouldClose() && !spectrum_done(&state))
+    int windowed_w = WINDOW_WIDTH;
+    int windowed_h = WINDOW_HEIGHT;
+
+    while (!WindowShouldClose())
     {
         double dt = GetFrameTime();
+
+        if (IsKeyPressed(KEY_F11))
+        {
+            if (IsWindowFullscreen())
+            {
+                ToggleFullscreen();
+                SetWindowSize(windowed_w, windowed_h);
+            }
+            else
+            {
+                windowed_w = GetScreenWidth();
+                windowed_h = GetScreenHeight();
+                int monitor = GetCurrentMonitor();
+                int mw = GetMonitorWidth(monitor);
+                int mh = GetMonitorHeight(monitor);
+                SetWindowSize(mw, mh);
+                ToggleFullscreen();
+            }
+            spectrum_handle_resize(&state);
+        }
+
         spectrum_handle_resize(&state);
         spectrum_update(&state, &wave, samples, dt);
         spectrum_render_to_texture(&state);
+
+        if (!loop_flag && spectrum_done(&state))
+        {
+            break;
+        }
+        if (loop_flag && spectrum_done(&state))
+        {
+            state.window_index = 0;
+            state.accumulator = 0.0;
+        }
+        if (loop_flag && !IsSoundPlaying(sound))
+        {
+            PlaySound(sound);
+        }
+
         BeginDrawing();
         ClearBackground((Color){18, 18, 18, 255});
         render_draw(&state);
