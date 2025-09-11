@@ -7,7 +7,7 @@
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
-#define FFT_WINDOW_SIZE 4096
+#define FFT_WINDOW_SIZE 2048
 #define FFT_HOP_SIZE (FFT_WINDOW_SIZE / 4)
 #define HPF_CUTOFF_HZ 1.0
 #define SMOOTH_ATTACK_MS 2.0
@@ -15,7 +15,7 @@
 #define BAR_PIXEL_WIDTH 4
 #define BAR_GAP 1
 #define DB_TOP 0.0
-#define DB_BOTTOM -60.0
+#define DB_BOTTOM -40.0
 #define DB_OFFSET 16.0
 #define PEAK_DECAY_DB_PER_SEC 3.0
 #define LERP_SPEED 0.10
