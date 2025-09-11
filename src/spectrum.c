@@ -173,7 +173,7 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     s->bar_gradients[0] = (bar_gradient_t){(Color){255, 128, 0, 255}, (Color){255, 255, 0, 255}};
     s->bar_gradients[1] = (bar_gradient_t){(Color){0, 32, 255, 255}, (Color){0, 255, 255, 255}};
     s->bar_gradients[2] = (bar_gradient_t){(Color){0, 255, 0, 255}, (Color){0, 255, 255, 255}};
-    s->bar_gradient_index = 1;
+    s->bar_gradient_index = 2;
 
     s->fft_bins = FFT_WINDOW_SIZE / 2 + 1;
     s->f_min = 20.0;
