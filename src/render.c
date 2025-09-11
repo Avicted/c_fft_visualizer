@@ -98,6 +98,7 @@ draw_freq_grid(const spectrum_state_t *s)
         DrawTextEx(s->font, label, (Vector2){(float)lx, (float)(s->plot_top + s->plot_height + 6)}, 16, 0, WHITE);
     }
 }
+
 static void
 draw_overlay(const spectrum_state_t *s)
 {

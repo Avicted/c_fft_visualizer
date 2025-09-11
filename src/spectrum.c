@@ -188,6 +188,7 @@ void spectrum_destroy(spectrum_state_t *s)
         UnloadRenderTexture(s->fft_rt);
     }
     free_bars(s);
+
     if (s->fft_plan)
     {
         fftw_destroy_plan(s->fft_plan);
