@@ -70,6 +70,13 @@ typedef struct spectrum_state_t
     int plot_width;
     int plot_height;
     Font font;
+
+    double meter_interval_elapsed;
+    double meter_sum_sq;
+    double meter_peak_lin;
+    int meter_sample_count;
+    double meter_rms_dbfs;
+    double meter_peak_dbfs;
 } spectrum_state_t;
 
 void spectrum_set_fractional_octave(spectrum_state_t *s, double frac, int index);

@@ -3,13 +3,15 @@
 #include <math.h>
 #include "spectrum.h"
 
+static void compute_bar_targets(spectrum_state_t *s);
+
 const double FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES] = {
-    1.0,        // 1/1
-    1.0 / 3.0,  // 1/3
-    1.0 / 6.0,  // 1/6
-    1.0 / 12.0, // 1/12
-    1.0 / 24.0, // 1/24
-    1.0 / 48.0  // 1/48
+    1.0,
+    1.0 / 3.0,
+    1.0 / 6.0,
+    1.0 / 12.0,
+    1.0 / 24.0,
+    1.0 / 48.0,
 };
 
 void spectrum_set_fractional_octave(spectrum_state_t *s, double frac, int index)
@@ -206,6 +208,13 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     s->fft_plan = fftw_plan_dft_r2c_1d(FFT_WINDOW_SIZE, s->fft_in, s->fft_out, FFTW_ESTIMATE);
     s->last_width = GetScreenWidth();
     s->last_height = GetScreenHeight();
+
+    s->meter_interval_elapsed = 0.0;
+    s->meter_sum_sq = 0.0;
+    s->meter_peak_lin = 0.0;
+    s->meter_sample_count = 0;
+    s->meter_rms_dbfs = NAN;
+    s->meter_peak_dbfs = NAN;
 }
 
 void spectrum_destroy(spectrum_state_t *s)
@@ -270,9 +279,9 @@ compute_fft_window(spectrum_state_t *s, float *samples, Wave *wave)
     size_t total_samples = (size_t)wave->frameCount * (size_t)wave->channels;
     size_t start_index = (size_t)s->window_index * (size_t)s->hop_size * (size_t)wave->channels;
 
-    // First pass: gather mono and compute mean
     double mean = 0.0;
     static float mono_buf[FFT_WINDOW_SIZE];
+
     for (int i = 0; i < FFT_WINDOW_SIZE; i++)
     {
         size_t si = start_index + (size_t)i * (size_t)wave->channels;
@@ -280,9 +289,7 @@ compute_fft_window(spectrum_state_t *s, float *samples, Wave *wave)
         if (si < total_samples)
         {
             if (wave->channels == 1)
-            {
                 mono = samples[si];
-            }
             else
             {
                 float a = samples[si];
@@ -290,9 +297,18 @@ compute_fft_window(spectrum_state_t *s, float *samples, Wave *wave)
                 mono = 0.5f * (a + b);
             }
         }
-
         mono_buf[i] = mono;
         mean += mono;
+
+        // Meter accumulation (raw mono sample before mean removal / HPF / window)
+        double absx = fabs((double)mono);
+        if (absx > s->meter_peak_lin)
+        {
+            s->meter_peak_lin = absx;
+        }
+
+        s->meter_sum_sq += (double)mono * (double)mono;
+        s->meter_sample_count++;
     }
     mean /= (double)FFT_WINDOW_SIZE;
 
@@ -325,13 +341,9 @@ compute_fft_window(spectrum_state_t *s, float *samples, Wave *wave)
     }
 }
 
-static void compute_bar_targets(spectrum_state_t *s, int sample_rate); // forward
-
 static void
-compute_bar_targets(spectrum_state_t *s, int sample_rate)
+compute_bar_targets(spectrum_state_t *s)
 {
-    (void)sample_rate;
-
     // Use Nyquist for Hz->bin mapping (independent of displayed f_max)
     double max_bin = (double)(s->fft_bins - 1);
     double nyquist = (double)s->sample_rate * 0.5;
@@ -482,8 +494,45 @@ void spectrum_update(spectrum_state_t *s, Wave *wave, float *samples, double dt)
     {
         s->accumulator -= s->seconds_per_window;
         compute_fft_window(s, samples, wave);
-        compute_bar_targets(s, wave->sampleRate);
+        compute_bar_targets(s);
         s->window_index++;
+    }
+
+    const double meter_update_interval_seconds = 1.0;
+    s->meter_interval_elapsed += dt;
+    if (s->meter_interval_elapsed >= meter_update_interval_seconds)
+    {
+        if (s->meter_sample_count > 0)
+        {
+            double rms_lin = sqrt(s->meter_sum_sq / (double)s->meter_sample_count);
+            if (s->meter_peak_lin < 1e-12)
+            {
+                s->meter_peak_dbfs = -INFINITY;
+            }
+            else
+            {
+                s->meter_peak_dbfs = 20.0 * log10(s->meter_peak_lin);
+            }
+
+            if (rms_lin < 1e-12)
+            {
+                s->meter_rms_dbfs = -INFINITY;
+            }
+            else
+            {
+                s->meter_rms_dbfs = 20.0 * log10(rms_lin);
+            }
+        }
+        else
+        {
+            s->meter_peak_dbfs = s->meter_rms_dbfs = NAN;
+        }
+
+        // reset accumulators, keep spill remainder
+        s->meter_interval_elapsed = fmod(s->meter_interval_elapsed, 1.0);
+        s->meter_sum_sq = 0.0;
+        s->meter_peak_lin = 0.0;
+        s->meter_sample_count = 0;
     }
 
     smooth_bars(s, dt);

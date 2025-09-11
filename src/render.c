@@ -46,7 +46,7 @@ draw_db_grid(const spectrum_state_t *s)
             ly = 2;
         }
 
-        DrawTextEx(s->font, label, (Vector2){(float)(s->plot_left - (int)ts.x - 6), (float)ly}, 20, 0, WHITE);
+        DrawTextEx(s->font, label, (Vector2){(float)(s->plot_left - (int)ts.x - 16), (float)ly}, 20, 0, WHITE);
     }
 }
 
@@ -102,7 +102,7 @@ draw_freq_grid(const spectrum_state_t *s)
 static void
 draw_overlay(const spectrum_state_t *s)
 {
-    char info[96];
+    char info[128];
     int sr = s->sample_rate;
     int denom = (int)(1.0 / s->fractional_octave);
     if (denom <= 0)
@@ -110,11 +110,49 @@ draw_overlay(const spectrum_state_t *s)
         denom = 1;
     }
 
-    snprintf(info, sizeof(info),
-             "Sample Rate: %d Hz | Fractional Oct. 1/%d",
-             sr, denom);
-
+    snprintf(info, sizeof(info), "Sample Rate: %d Hz | Fractional Oct. 1/%d", sr, denom);
     DrawTextEx(s->font, info, (Vector2){80, 16}, 25, 0, WHITE);
+
+    char meters[96];
+    const char *peak_txt;
+    const char *rms_txt;
+    char pkbuf[32], rmsbuf[32];
+
+    if (isnan(s->meter_peak_dbfs))
+    {
+        peak_txt = "--.-";
+    }
+    else if (isinf(s->meter_peak_dbfs))
+    {
+        snprintf(pkbuf, sizeof(pkbuf), "-inf");
+        peak_txt = pkbuf;
+    }
+    else
+    {
+        snprintf(pkbuf, sizeof(pkbuf), "%.1f", s->meter_peak_dbfs);
+        peak_txt = pkbuf;
+    }
+
+    if (isnan(s->meter_rms_dbfs))
+    {
+        rms_txt = "--.-";
+    }
+    else if (isinf(s->meter_rms_dbfs))
+    {
+        snprintf(rmsbuf, sizeof(rmsbuf), "-inf");
+        rms_txt = rmsbuf;
+    }
+    else
+    {
+        snprintf(rmsbuf, sizeof(rmsbuf), "%.1f", s->meter_rms_dbfs);
+        rms_txt = rmsbuf;
+    }
+
+    snprintf(meters, sizeof(meters), "Peak: %6s dBFS\nRMS:  %6s dBFS", peak_txt, rms_txt);
+
+    Vector2 ts = MeasureTextEx(s->font, meters, 20, 0);
+    float x = (float)(s->plot_left + s->plot_width - (int)ts.x - 120);
+    DrawTextEx(s->font, meters, (Vector2){x, 16}, 32, 0, WHITE);
 }
 
 void render_draw(const spectrum_state_t *s)
