@@ -23,15 +23,6 @@
 
 #define GRID_COLOR (Color){40, 40, 40, 96}
 
-// #define BAR_GRADIENT_BOTTOM_COLOR (Color){255, 128, 0, 255}
-// #define BAR_GRADIENT_TOP_COLOR (Color){255, 255, 0, 255}
-
-// #define BAR_GRADIENT_BOTTOM_COLOR (Color){0, 32, 255, 255}
-// #define BAR_GRADIENT_TOP_COLOR (Color){0, 255, 255, 255}
-
-#define BAR_GRADIENT_BOTTOM_COLOR (Color){0, 255, 0, 255}
-#define BAR_GRADIENT_TOP_COLOR (Color){0, 255, 255, 255}
-
 #define MARGIN_LEFT 60
 #define MARGIN_RIGHT 20
 #define MARGIN_TOP 64
