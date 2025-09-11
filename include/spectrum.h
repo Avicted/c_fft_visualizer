@@ -16,8 +16,19 @@
 
 extern const double FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES];
 
+#define NUM_BAR_GRADIENTS 3
+
+typedef struct
+{
+    Color bottom;
+    Color top;
+} bar_gradient_t;
+
 typedef struct spectrum_state_t
 {
+    int bar_gradient_index;
+    bar_gradient_t bar_gradients[NUM_BAR_GRADIENTS];
+
     double fft_in[FFT_WINDOW_SIZE];
     fftw_complex fft_out[FFT_WINDOW_SIZE / 2 + 1];
     fftw_plan fft_plan;
@@ -62,6 +73,8 @@ typedef struct spectrum_state_t
 } spectrum_state_t;
 
 void spectrum_set_fractional_octave(spectrum_state_t *s, double frac, int index);
+Texture2D create_gradient_texture(int height, bar_gradient_t grad);
+
 void spectrum_init(spectrum_state_t *s, Wave *wave, Font font);
 void spectrum_destroy(spectrum_state_t *s);
 void spectrum_set_total_windows(spectrum_state_t *s, int total);

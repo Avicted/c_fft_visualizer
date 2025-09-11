@@ -56,6 +56,17 @@ void app_handle_input(app_state_t *app_state)
 
         spectrum_handle_resize(&app_state->spectrum_state);
     }
+
+    if (IsKeyPressed(KEY_C))
+    {
+        spectrum_state_t *s = &app_state->spectrum_state;
+        s->bar_gradient_index = (s->bar_gradient_index + 1) % NUM_BAR_GRADIENTS;
+        if (s->gradient_tex.id)
+        {
+            UnloadTexture(s->gradient_tex);
+        }
+        s->gradient_tex = create_gradient_texture(s->plot_height, s->bar_gradients[s->bar_gradient_index]);
+    }
 }
 
 void app_platform_init(app_state_t *app_state)

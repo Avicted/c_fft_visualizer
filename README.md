@@ -20,6 +20,11 @@ sudo pacman -S clang raylib fftw
 ./build/c_fft_visualizer <path_to_audio_file> <--loop (optional)>
 ```
 
+## Controls
+- `O`: Change octave scaling
+- `C`: Cycle through color gradients
+- `F11`: Toggle fullscreen
+
 
 ## Screenshot
 ![screenshot](assets/screenshot.png)

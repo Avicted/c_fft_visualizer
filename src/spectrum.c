@@ -25,6 +25,15 @@ void spectrum_set_fractional_octave(spectrum_state_t *s, double frac, int index)
     s->fractional_octave_index = index;
 }
 
+Texture2D
+create_gradient_texture(int height, bar_gradient_t grad)
+{
+    Image img = GenImageGradientLinear(1, height, 0, grad.top, grad.bottom);
+    Texture2D tex = LoadTextureFromImage(img);
+    UnloadImage(img);
+    return tex;
+}
+
 static int
 calc_num_bars_for_width(int w)
 {
@@ -54,15 +63,6 @@ update_plot_rect(spectrum_state_t *s)
     {
         s->plot_height = 10;
     }
-}
-
-static Texture2D
-create_gradient_texture(int h)
-{
-    Image img = GenImageGradientLinear(1, h, 0, BAR_GRADIENT_TOP_COLOR, BAR_GRADIENT_BOTTOM_COLOR);
-    Texture2D tex = LoadTextureFromImage(img);
-    UnloadImage(img);
-    return tex;
 }
 
 static int
@@ -169,6 +169,12 @@ reallocate_bars_if_needed(spectrum_state_t *s)
 void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
 {
     memset(s, 0, sizeof(*s));
+
+    s->bar_gradients[0] = (bar_gradient_t){(Color){255, 128, 0, 255}, (Color){255, 255, 0, 255}};
+    s->bar_gradients[1] = (bar_gradient_t){(Color){0, 32, 255, 255}, (Color){0, 255, 255, 255}};
+    s->bar_gradients[2] = (bar_gradient_t){(Color){0, 255, 0, 255}, (Color){0, 255, 255, 255}};
+    s->bar_gradient_index = 1;
+
     s->fft_bins = FFT_WINDOW_SIZE / 2 + 1;
     s->f_min = 20.0;
     s->f_max = fmin(20000.0, (double)wave->sampleRate * 0.5);
@@ -194,7 +200,7 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     s->hpf_prev_y = 0.0;
 
     update_plot_rect(s);
-    s->gradient_tex = create_gradient_texture(s->plot_height);
+    s->gradient_tex = create_gradient_texture(s->plot_height, s->bar_gradients[s->bar_gradient_index]);
     s->fft_rt = LoadRenderTexture(s->plot_width, s->plot_height);
     allocate_bars(s, calc_num_bars_for_width(s->plot_width));
     s->fft_plan = fftw_plan_dft_r2c_1d(FFT_WINDOW_SIZE, s->fft_in, s->fft_out, FFTW_ESTIMATE);
@@ -252,7 +258,7 @@ void spectrum_handle_resize(spectrum_state_t *s)
     if (s->gradient_tex.id)
     {
         UnloadTexture(s->gradient_tex);
-        s->gradient_tex = create_gradient_texture(s->plot_height);
+        s->gradient_tex = create_gradient_texture(s->plot_height, s->bar_gradients[s->bar_gradient_index]);
     }
 
     reallocate_bars_if_needed(s);
