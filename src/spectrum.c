@@ -3,6 +3,28 @@
 #include <math.h>
 #include "spectrum.h"
 
+const double FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES] = {
+    1.0,        // 1/1
+    1.0 / 3.0,  // 1/3
+    1.0 / 6.0,  // 1/6
+    1.0 / 12.0, // 1/12
+    1.0 / 24.0, // 1/24
+    1.0 / 48.0  // 1/48
+};
+
+void spectrum_set_fractional_octave(spectrum_state_t *s, double frac, int index)
+{
+    if (frac <= 0.0)
+    {
+        frac = 1.0 / 24.0;
+        index = 4;
+    }
+
+    s->fractional_octave = frac;
+    s->fractional_k = pow(2.0, frac / 2.0);
+    s->fractional_octave_index = index;
+}
+
 static int
 calc_num_bars_for_width(int w)
 {
@@ -151,7 +173,10 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     s->f_min = 20.0;
     s->f_max = fmin(20000.0, (double)wave->sampleRate * 0.5);
     s->log_f_ratio = log(s->f_max / s->f_min);
-    s->fractional_k = pow(2.0, FRACTIONAL_OCTAVE / 2.0);
+
+    s->fractional_octave_index = 4;
+    s->fractional_octave = FRACTIONAL_OCTAVES[s->fractional_octave_index];
+    s->fractional_k = pow(2.0, s->fractional_octave / 2.0);
     s->hop_size = FFT_HOP_SIZE;
     s->seconds_per_window = (double)s->hop_size / (double)wave->sampleRate;
     s->font = font;
@@ -293,6 +318,8 @@ compute_fft_window(spectrum_state_t *s, float *samples, Wave *wave)
         s->bin_mag[i] = a;
     }
 }
+
+static void compute_bar_targets(spectrum_state_t *s, int sample_rate); // forward
 
 static void
 compute_bar_targets(spectrum_state_t *s, int sample_rate)

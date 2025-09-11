@@ -37,6 +37,23 @@ void app_handle_input(app_state_t *app_state)
             SetWindowSize(mw, mh);
             ToggleFullscreen();
         }
+
+        spectrum_handle_resize(&app_state->spectrum_state);
+    }
+
+    if (IsKeyPressed(KEY_O))
+    {
+        app_state->fractional_octave_index_selected++;
+        if (app_state->fractional_octave_index_selected >= NUM_FRACTIONAL_OCTAVES)
+        {
+            app_state->fractional_octave_index_selected = 0;
+        }
+
+        double frac = FRACTIONAL_OCTAVES[app_state->fractional_octave_index_selected];
+        spectrum_set_fractional_octave(&app_state->spectrum_state,
+                                       frac,
+                                       app_state->fractional_octave_index_selected);
+
         spectrum_handle_resize(&app_state->spectrum_state);
     }
 }
@@ -52,6 +69,7 @@ void app_platform_init(app_state_t *app_state)
     app_state->main_font = LoadFontEx("assets/fonts/retro-pixel-arcade.ttf", 64, 0, 250);
     app_state->windowed_w = WINDOW_WIDTH;
     app_state->windowed_h = WINDOW_HEIGHT;
+    app_state->fractional_octave_index_selected = 4; // Default to 1/24 octave
 }
 
 int app_load_audio_data(app_state_t *app_state, const char *input_file)

@@ -13,6 +13,7 @@ typedef struct app_state_t
     int windowed_w;
     int windowed_h;
     int loop_flag;
+    int fractional_octave_index_selected;
 
     Font main_font;
 

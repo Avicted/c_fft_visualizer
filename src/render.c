@@ -102,9 +102,18 @@ draw_freq_grid(const spectrum_state_t *s)
 static void
 draw_overlay(const spectrum_state_t *s)
 {
-    char info[64];
+    char info[96];
     int sr = s->sample_rate;
-    snprintf(info, sizeof(info), "Sample Rate: %d Hz", sr);
+    int denom = (int)(1.0 / s->fractional_octave);
+    if (denom <= 0)
+    {
+        denom = 1;
+    }
+
+    snprintf(info, sizeof(info),
+             "Sample Rate: %d Hz | Fractional Oct. 1/%d",
+             sr, denom);
+
     DrawTextEx(s->font, info, (Vector2){80, 16}, 24, 0, WHITE);
 }
 

@@ -14,7 +14,6 @@
 #define SMOOTH_RELEASE_MS 100.0
 #define BAR_PIXEL_WIDTH 4
 #define BAR_GAP 1
-#define FRACTIONAL_OCTAVE (1.0 / 12.0)
 #define DB_TOP 0.0
 #define DB_BOTTOM -60.0
 #define DB_OFFSET 16.0

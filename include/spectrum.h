@@ -5,6 +5,17 @@
 #include <fftw3.h>
 #include "config.h"
 
+#define FRACTIONAL_OCTAVE_1_1 1
+#define FRACTIONAL_OCTAVE_1_3 (1.0 / 3.0)
+#define FRACTIONAL_OCTAVE_1_6 (1.0 / 6.0)
+#define FRACTIONAL_OCTAVE_1_12 (1.0 / 12.0)
+#define FRACTIONAL_OCTAVE_1_24 (1.0 / 24.0)
+#define FRACTIONAL_OCTAVE_1_48 (1.0 / 48.0)
+
+#define NUM_FRACTIONAL_OCTAVES 6
+
+extern const double FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES];
+
 typedef struct spectrum_state_t
 {
     double fft_in[FFT_WINDOW_SIZE];
@@ -23,7 +34,11 @@ typedef struct spectrum_state_t
     double f_min;
     double f_max;
     double log_f_ratio;
+
+    double fractional_octave;
     double fractional_k;
+    int fractional_octave_index;
+
     double seconds_per_window;
     double accumulator;
 
@@ -46,6 +61,7 @@ typedef struct spectrum_state_t
     Font font;
 } spectrum_state_t;
 
+void spectrum_set_fractional_octave(spectrum_state_t *s, double frac, int index);
 void spectrum_init(spectrum_state_t *s, Wave *wave, Font font);
 void spectrum_destroy(spectrum_state_t *s);
 void spectrum_set_total_windows(spectrum_state_t *s, int total);
