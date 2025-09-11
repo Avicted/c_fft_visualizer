@@ -46,7 +46,7 @@ draw_db_grid(const spectrum_state_t *s)
             ly = 2;
         }
 
-        DrawTextEx(s->font, label, (Vector2){(float)(s->plot_left - (int)ts.x - 6), (float)ly}, 16, 0, WHITE);
+        DrawTextEx(s->font, label, (Vector2){(float)(s->plot_left - (int)ts.x - 6), (float)ly}, 20, 0, WHITE);
     }
 }
 
@@ -95,7 +95,7 @@ draw_freq_grid(const spectrum_state_t *s)
             lx = s->plot_left + s->plot_width - (int)ts.x;
         }
 
-        DrawTextEx(s->font, label, (Vector2){(float)lx, (float)(s->plot_top + s->plot_height + 6)}, 16, 0, WHITE);
+        DrawTextEx(s->font, label, (Vector2){(float)lx, (float)(s->plot_top + s->plot_height + 6)}, 20, 0, WHITE);
     }
 }
 
@@ -114,7 +114,7 @@ draw_overlay(const spectrum_state_t *s)
              "Sample Rate: %d Hz | Fractional Oct. 1/%d",
              sr, denom);
 
-    DrawTextEx(s->font, info, (Vector2){80, 16}, 24, 0, WHITE);
+    DrawTextEx(s->font, info, (Vector2){80, 16}, 25, 0, WHITE);
 }
 
 void render_draw(const spectrum_state_t *s)

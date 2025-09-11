@@ -66,7 +66,7 @@ void app_platform_init(app_state_t *app_state)
     SetTargetFPS(60);
     SetWindowIcon(LoadImage("assets/icon.png"));
 
-    app_state->main_font = LoadFontEx("assets/fonts/retro-pixel-arcade.ttf", 64, 0, 250);
+    app_state->main_font = LoadFontEx("assets/fonts/Roboto_Mono/RobotoMono-Regular.ttf", 120, 0, 250);
     app_state->windowed_w = WINDOW_WIDTH;
     app_state->windowed_h = WINDOW_HEIGHT;
     app_state->fractional_octave_index_selected = 4; // Default to 1/24 octave
