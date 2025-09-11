@@ -1,19 +1,29 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <math.h>
+
+#define M_PI acos(-1.0)
+
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
-#define FFT_WINDOW_SIZE 1024
-#define BAR_PIXEL_WIDTH 1
-#define FRACTIONAL_OCTAVE (1.0 / 48.0)
+#define FFT_WINDOW_SIZE 4096
+#define FFT_HOP_SIZE (FFT_WINDOW_SIZE / 4)
+#define HPF_CUTOFF_HZ 1.0
+#define SMOOTH_ATTACK_MS 2.0
+#define SMOOTH_RELEASE_MS 100.0
+#define BAR_PIXEL_WIDTH 4
+#define BAR_GAP 1
+#define FRACTIONAL_OCTAVE (1.0 / 12.0)
 #define DB_TOP 0.0
-#define DB_BOTTOM -96.0
+#define DB_BOTTOM -60.0
+#define DB_OFFSET 16.0
 #define PEAK_DECAY_DB_PER_SEC 3.0
-#define LERP_SPEED 0.20
+#define LERP_SPEED 0.10
 #define EPSILON_POWER 1e-12
 
 #define GRID_COLOR (Color){40, 40, 40, 96}
-#define BAR_GRADIENT_BOTTOM_COLOR (Color){255, 100, 0, 255}
+#define BAR_GRADIENT_BOTTOM_COLOR (Color){255, 128, 0, 255}
 #define BAR_GRADIENT_TOP_COLOR (Color){255, 255, 0, 255}
 // #define BAR_GRADIENT_BOTTOM_COLOR (Color){0, 32, 255, 255}
 // #define BAR_GRADIENT_TOP_COLOR (Color){0, 255, 255, 255}

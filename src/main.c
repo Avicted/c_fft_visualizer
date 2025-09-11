@@ -29,7 +29,14 @@ int main(int argc, char **argv)
     }
 
     spectrum_init(&app_state->spectrum_state, &app_state->wave, app_state->main_font);
-    spectrum_set_total_windows(&app_state->spectrum_state, app_state->wave.frameCount / FFT_WINDOW_SIZE);
+    {
+        int hop = FFT_HOP_SIZE;
+        long frames = (long)app_state->wave.frameCount;
+        long total = (frames > FFT_WINDOW_SIZE) ? (1 + (frames - FFT_WINDOW_SIZE) / hop) : 1;
+        if (total < 1)
+            total = 1;
+        spectrum_set_total_windows(&app_state->spectrum_state, (int)total);
+    }
 
     app_run(app_state);
 

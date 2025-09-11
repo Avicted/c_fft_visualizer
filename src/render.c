@@ -13,19 +13,19 @@ freq_to_bar_index(const spectrum_state_t *s, double f)
         f = s->f_max;
     }
 
-    double x_norm = log(f / s->f_min) / s->log_f_ratio;
-    double bar_pos = x_norm * (double)(s->num_bars - 1);
-    int bar_index = (int)floor(bar_pos + 0.5);
-    if (bar_index < 0)
+    double r = log(f / s->f_min) / log(s->f_max / s->f_min);
+    double pos = r * (double)(s->num_bars - 1);
+    int idx = (int)floor(pos + 0.5);
+    if (idx < 0)
     {
-        bar_index = 0;
+        idx = 0;
     }
-    if (bar_index >= s->num_bars)
+    if (idx >= s->num_bars)
     {
-        bar_index = s->num_bars - 1;
+        idx = s->num_bars - 1;
     }
 
-    return bar_index;
+    return idx;
 }
 
 static void
@@ -45,6 +45,7 @@ draw_db_grid(const spectrum_state_t *s)
         {
             ly = 2;
         }
+
         DrawTextEx(s->font, label, (Vector2){(float)(s->plot_left - (int)ts.x - 6), (float)ly}, 16, 0, WHITE);
     }
 }
@@ -52,19 +53,19 @@ draw_db_grid(const spectrum_state_t *s)
 static void
 draw_freq_grid(const spectrum_state_t *s)
 {
-    static const double freqs[] = {20, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000};
-    int nf = (int)(sizeof(freqs) / sizeof(freqs[0]));
-    int last_x = -9999;
-    for (int i = 0; i < nf; i++)
+    const double ticks[] = {20, 31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
+    int last_x = -999999;
+    for (int i = 0; i < (int)(sizeof(ticks) / sizeof(ticks[0])); i++)
     {
-        double f = freqs[i];
+        double f = ticks[i];
         if (f < s->f_min || f > s->f_max)
         {
             continue;
         }
 
         int idx = freq_to_bar_index(s, f);
-        int x = s->plot_left + idx * BAR_PIXEL_WIDTH;
+
+        int x = s->plot_left + idx * (BAR_PIXEL_WIDTH + BAR_GAP) + BAR_PIXEL_WIDTH / 2;
         if (x == last_x)
         {
             continue;
@@ -72,54 +73,49 @@ draw_freq_grid(const spectrum_state_t *s)
 
         last_x = x;
         DrawLine(x, s->plot_top, x, s->plot_top + s->plot_height, GRID_COLOR);
-        if (i % 2 == 0)
+
+        char label[16];
+        if (f >= 1000.0)
         {
-            char label[16];
-            if (f >= 1000.0)
-            {
-                snprintf(label, sizeof(label), "%.0fk", f / 1000.0);
-            }
-            else
-            {
-                snprintf(label, sizeof(label), "%.0f", f);
-            }
-
-            Vector2 ts = MeasureTextEx(s->font, label, 16, 0);
-            int lx = x - (int)(ts.x / 2);
-            if (lx < s->plot_left)
-            {
-                lx = s->plot_left;
-            }
-            if (lx + (int)ts.x > s->plot_left + s->plot_width)
-            {
-                lx = s->plot_left + s->plot_width - (int)ts.x;
-            }
-
-            DrawTextEx(s->font, label, (Vector2){(float)lx, (float)(s->plot_top + s->plot_height + 6)}, 16, 0, WHITE);
+            snprintf(label, sizeof(label), "%.0fk", f / 1000.0);
         }
+        else
+        {
+            snprintf(label, sizeof(label), "%.0f", f);
+        }
+
+        Vector2 ts = MeasureTextEx(s->font, label, 16, 0);
+        int lx = x - (int)(ts.x / 2);
+        if (lx < s->plot_left)
+        {
+            lx = s->plot_left;
+        }
+        if (lx + (int)ts.x > s->plot_left + s->plot_width)
+        {
+            lx = s->plot_left + s->plot_width - (int)ts.x;
+        }
+
+        DrawTextEx(s->font, label, (Vector2){(float)lx, (float)(s->plot_top + s->plot_height + 6)}, 16, 0, WHITE);
     }
 }
-
 static void
 draw_overlay(const spectrum_state_t *s)
 {
-    char *title = "Oct smoothing";
-    char oct_smoothing_str[32];
-    int denominator = (int)(1.0 / FRACTIONAL_OCTAVE + 0.5); // Calculate denominator dynamically
-    snprintf(oct_smoothing_str, sizeof(oct_smoothing_str), "1/%d", denominator);
-    char final_str[64];
-    snprintf(final_str, sizeof(final_str), "%s: %s", title, oct_smoothing_str);
-
-    DrawTextEx(s->font, final_str, (Vector2){80, 16}, 20, 0, WHITE);
+    char info[64];
+    int sr = s->sample_rate;
+    snprintf(info, sizeof(info), "Sample Rate: %d Hz", sr);
+    DrawTextEx(s->font, info, (Vector2){80, 16}, 24, 0, WHITE);
 }
 
 void render_draw(const spectrum_state_t *s)
 {
+    draw_db_grid(s);
+    draw_freq_grid(s);
+
     DrawTexturePro(s->fft_rt.texture,
                    (Rectangle){0, 0, (float)s->fft_rt.texture.width, (float)-s->fft_rt.texture.height},
                    (Rectangle){(float)s->plot_left, (float)s->plot_top, (float)s->plot_width, (float)s->plot_height},
                    (Vector2){0, 0}, 0, WHITE);
-    draw_db_grid(s);
-    draw_freq_grid(s);
+
     draw_overlay(s);
 }

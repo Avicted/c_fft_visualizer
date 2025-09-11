@@ -14,6 +14,7 @@ typedef struct spectrum_state_t
     double bin_mag[FFT_WINDOW_SIZE / 2 + 1];
 
     int num_bars;
+    int sample_rate;
     double *bar_target;
     double *bar_smoothed;
     double *peak_power;
@@ -25,6 +26,12 @@ typedef struct spectrum_state_t
     double fractional_k;
     double seconds_per_window;
     double accumulator;
+
+    int hop_size;
+    double window[FFT_WINDOW_SIZE];
+    double hpf_alpha;
+    double hpf_prev_x;
+    double hpf_prev_y;
 
     int window_index;
     int total_windows;

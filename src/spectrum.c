@@ -11,7 +11,7 @@ calc_num_bars_for_width(int w)
         return 0;
     }
 
-    return w / BAR_PIXEL_WIDTH;
+    return w / (BAR_PIXEL_WIDTH + BAR_GAP);
 }
 
 static void
@@ -23,6 +23,7 @@ update_plot_rect(spectrum_state_t *s)
     s->plot_top = MARGIN_TOP;
     s->plot_width = sw - (MARGIN_LEFT + MARGIN_RIGHT);
     s->plot_height = sh - (MARGIN_TOP + MARGIN_BOTTOM);
+
     if (s->plot_width < 10)
     {
         s->plot_width = 10;
@@ -58,10 +59,11 @@ allocate_bars(spectrum_state_t *s, int num)
         s->bar_target = s->bar_smoothed = s->peak_power = s->bar_freq_center = NULL;
         return 0;
     }
+
     for (int b = 0; b < num; b++)
     {
-        double t = (num > 1) ? (double)b / (double)(num - 1) : 0.0;
-        s->bar_freq_center[b] = s->f_min * exp(s->log_f_ratio * t);
+        double t = (double)b / (double)(num - 1);
+        s->bar_freq_center[b] = s->f_min * pow(s->f_max / s->f_min, t);
     }
 
     s->num_bars = num;
@@ -104,25 +106,32 @@ reallocate_bars_if_needed(spectrum_state_t *s)
         free(new_freq_center);
         return 0;
     }
+
     for (int i = 0; i < new_num; i++)
     {
         double t = (double)i / (double)(new_num - 1);
-        new_freq_center[i] = s->f_min * exp(s->log_f_ratio * t);
+
+        new_freq_center[i] = s->f_min * pow(s->f_max / s->f_min, t);
+
         if (s->num_bars > 0)
         {
-            int old_index = (int)round(t * (s->num_bars - 1));
-            if (old_index < 0)
+            double f = new_freq_center[i];
+            int closest_idx = 0;
+            double min_dist = INFINITY;
+
+            for (int j = 0; j < s->num_bars; j++)
             {
-                old_index = 0;
-            }
-            if (old_index >= s->num_bars)
-            {
-                old_index = s->num_bars - 1;
+                double dist = fabs(log(f / s->bar_freq_center[j]));
+                if (dist < min_dist)
+                {
+                    min_dist = dist;
+                    closest_idx = j;
+                }
             }
 
-            new_target[i] = s->bar_target[old_index];
-            new_smoothed[i] = s->bar_smoothed[old_index];
-            new_peak[i] = s->peak_power[old_index];
+            new_target[i] = s->bar_target[closest_idx];
+            new_smoothed[i] = s->bar_smoothed[closest_idx];
+            new_peak[i] = s->peak_power[closest_idx];
         }
     }
 
@@ -132,7 +141,6 @@ reallocate_bars_if_needed(spectrum_state_t *s)
     s->peak_power = new_peak;
     s->bar_freq_center = new_freq_center;
     s->num_bars = new_num;
-
     return 1;
 }
 
@@ -141,11 +149,25 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     memset(s, 0, sizeof(*s));
     s->fft_bins = FFT_WINDOW_SIZE / 2 + 1;
     s->f_min = 20.0;
-    s->f_max = wave->sampleRate / 2.0;
+    s->f_max = fmin(20000.0, (double)wave->sampleRate * 0.5);
     s->log_f_ratio = log(s->f_max / s->f_min);
     s->fractional_k = pow(2.0, FRACTIONAL_OCTAVE / 2.0);
-    s->seconds_per_window = (double)FFT_WINDOW_SIZE / (double)wave->sampleRate;
+    s->hop_size = FFT_HOP_SIZE;
+    s->seconds_per_window = (double)s->hop_size / (double)wave->sampleRate;
     s->font = font;
+    s->sample_rate = wave->sampleRate;
+
+    for (int i = 0; i < FFT_WINDOW_SIZE; i++)
+    {
+        s->window[i] = 0.5 * (1.0 - cos((2.0 * M_PI * i) / (double)(FFT_WINDOW_SIZE - 1)));
+    }
+
+    double rc = 1.0 / (2.0 * M_PI * HPF_CUTOFF_HZ);
+    double dt = 1.0 / (double)wave->sampleRate;
+    s->hpf_alpha = rc / (rc + dt);
+    s->hpf_prev_x = 0.0;
+    s->hpf_prev_y = 0.0;
+
     update_plot_rect(s);
     s->gradient_tex = create_gradient_texture(s->plot_height);
     s->fft_rt = LoadRenderTexture(s->plot_width, s->plot_height);
@@ -213,39 +235,84 @@ void spectrum_handle_resize(spectrum_state_t *s)
 static void
 compute_fft_window(spectrum_state_t *s, float *samples, Wave *wave)
 {
-    int start_index = s->window_index * FFT_WINDOW_SIZE * wave->channels;
+    size_t total_samples = (size_t)wave->frameCount * (size_t)wave->channels;
+    size_t start_index = (size_t)s->window_index * (size_t)s->hop_size * (size_t)wave->channels;
+
+    // First pass: gather mono and compute mean
+    double mean = 0.0;
+    static float mono_buf[FFT_WINDOW_SIZE];
     for (int i = 0; i < FFT_WINDOW_SIZE; i++)
     {
-        float mono;
-        if (wave->channels == 1)
+        size_t si = start_index + (size_t)i * (size_t)wave->channels;
+        float mono = 0.0f;
+        if (si < total_samples)
         {
-            mono = samples[start_index + i];
-        }
-        else
-        {
-            mono = 0.5f * (samples[start_index + (i * 2)] + samples[start_index + (i * 2) + 1]);
+            if (wave->channels == 1)
+            {
+                mono = samples[si];
+            }
+            else
+            {
+                float a = samples[si];
+                float b = (si + 1 < total_samples) ? samples[si + 1] : 0.0f;
+                mono = 0.5f * (a + b);
+            }
         }
 
-        s->fft_in[i] = mono;
+        mono_buf[i] = mono;
+        mean += mono;
+    }
+    mean /= (double)FFT_WINDOW_SIZE;
+
+    // Second pass: HPF + window
+    for (int i = 0; i < FFT_WINDOW_SIZE; i++)
+    {
+        double x = (double)mono_buf[i] - mean;
+        double y = s->hpf_alpha * (s->hpf_prev_y + x - s->hpf_prev_x);
+        s->hpf_prev_x = x;
+        s->hpf_prev_y = y;
+        s->fft_in[i] = y * s->window[i];
     }
 
     fftw_execute(s->fft_plan);
+
+    // Correct single-sided spectrum scaling with Hann coherent gain
+    // Hann coherent gain = 0.5 -> scale = 2/(N*0.5) = 4/N
+    double scale = 4.0 / (double)FFT_WINDOW_SIZE;
     for (int i = 0; i < s->fft_bins; i++)
     {
         double re = s->fft_out[i][0];
         double im = s->fft_out[i][1];
-        s->bin_mag[i] = sqrt(re * re + im * im) / FFT_WINDOW_SIZE;
+        double a = sqrt(re * re + im * im) * scale;
+        if (i == 0 || i == s->fft_bins - 1)
+        {
+            a *= 0.5;
+        }
+
+        s->bin_mag[i] = a;
     }
 }
 
 static void
 compute_bar_targets(spectrum_state_t *s, int sample_rate)
 {
+    (void)sample_rate;
+
+    // Use Nyquist for Hz->bin mapping (independent of displayed f_max)
+    double max_bin = (double)(s->fft_bins - 1);
+    double nyquist = (double)s->sample_rate * 0.5;
+    double hz_to_bin = max_bin / nyquist;
+
     for (int b = 0; b < s->num_bars; b++)
     {
-        double f_center = s->bar_freq_center[b];
+        // Calculate logarithmically-spaced frequencies
+        double t = (double)b / (double)(s->num_bars - 1);
+        double f_center = s->f_min * pow(s->f_max / s->f_min, t);
+
+        // Compute band edges using constant-Q factor
         double f_low = f_center / s->fractional_k;
         double f_high = f_center * s->fractional_k;
+
         if (f_low < s->f_min)
         {
             f_low = s->f_min;
@@ -255,40 +322,96 @@ compute_bar_targets(spectrum_state_t *s, int sample_rate)
             f_high = s->f_max;
         }
 
-        int bin_low = (int)ceil(f_low * FFT_WINDOW_SIZE / (double)sample_rate);
-        int bin_high = (int)floor(f_high * FFT_WINDOW_SIZE / (double)sample_rate);
-        if (bin_low < 1)
+        // Convert to FFT bin indices
+        double k_lo = f_low * hz_to_bin;
+        double k_hi = f_high * hz_to_bin;
+
+        // Ensure we don't miss the first bin (which can contain significant energy)
+        if (b == 0)
         {
-            bin_low = 1;
+            k_lo = 0.0; // Include DC for first band
         }
-        if (bin_high >= s->fft_bins)
+        if (k_hi > max_bin)
         {
-            bin_high = s->fft_bins - 1;
-        }
-        if (bin_high < bin_low)
-        {
-            bin_high = bin_low;
+            k_hi = max_bin;
         }
 
-        double power_sum = 0.0;
-        int count = 0;
-        for (int kbin = bin_low; kbin <= bin_high; kbin++)
+        int k0 = (int)floor(k_lo);
+        int k1 = (int)floor(k_hi);
+
+        // Handle special case: no bins in range
+        if (k_hi <= k_lo || k1 < k0)
         {
-            double a = s->bin_mag[kbin];
-            power_sum += a * a;
-            count++;
+            s->bar_target[b] = 0.0;
+            continue;
         }
 
-        s->bar_target[b] = count ? (power_sum / (double)count) : 0.0;
+        double sum = 0.0;
+        double width = 0.0;
+
+        // Handle single-bin case
+        if (k0 == k1)
+        {
+            double w = k_hi - k_lo;
+            if (w > 0.0)
+            {
+                double p = s->bin_mag[k0];
+                sum += p * p * w;
+                width += w;
+            }
+        }
+        else // Multiple bins
+        {
+            // First bin (partial)
+            double frac0 = 1.0 - (k_lo - floor(k_lo));
+            if (frac0 > 0.0 && k0 >= 0 && k0 < s->fft_bins)
+            {
+                double p = s->bin_mag[k0];
+                sum += p * p * frac0;
+                width += frac0;
+            }
+
+            // Middle bins (full)
+            for (int k = k0 + 1; k < k1; k++)
+            {
+                if (k >= 0 && k < s->fft_bins)
+                {
+                    double p = s->bin_mag[k];
+                    sum += p * p;
+                    width += 1.0;
+                }
+            }
+
+            // Last bin (partial)
+            double frac1 = k_hi - floor(k_hi);
+            if (frac1 > 0.0 && k1 >= 0 && k1 < s->fft_bins)
+            {
+                double p = s->bin_mag[k1];
+                sum += p * p * frac1;
+                width += frac1;
+            }
+        }
+
+        double avg_power = (width > 0.0) ? (sum / width) : 0.0;
+
+        s->bar_target[b] = avg_power * (f_center / 1000.0);
     }
 }
 
 static void
-smooth_bars(spectrum_state_t *s)
+smooth_bars(spectrum_state_t *s, double dt)
 {
+    double tau_a = SMOOTH_ATTACK_MS * 0.001;
+    double tau_r = SMOOTH_RELEASE_MS * 0.001;
+    double a_up = 1.0 - exp(-dt / tau_a);
+    double a_dn = 1.0 - exp(-dt / tau_r);
+
     for (int b = 0; b < s->num_bars; b++)
     {
-        s->bar_smoothed[b] += LERP_SPEED * (s->bar_target[b] - s->bar_smoothed[b]);
+        double y = s->bar_smoothed[b];
+        double x = s->bar_target[b];
+        double a = (x > y) ? a_up : a_dn;
+        s->bar_smoothed[b] = y + a * (x - y);
     }
 }
 
@@ -321,7 +444,7 @@ void spectrum_update(spectrum_state_t *s, Wave *wave, float *samples, double dt)
     }
 
     s->accumulator += dt;
-    if (s->accumulator >= s->seconds_per_window)
+    while (s->accumulator >= s->seconds_per_window && !spectrum_done(s))
     {
         s->accumulator -= s->seconds_per_window;
         compute_fft_window(s, samples, wave);
@@ -329,7 +452,7 @@ void spectrum_update(spectrum_state_t *s, Wave *wave, float *samples, double dt)
         s->window_index++;
     }
 
-    smooth_bars(s);
+    smooth_bars(s, dt);
     update_peaks(s, dt);
 }
 
@@ -338,9 +461,12 @@ void spectrum_render_to_texture(spectrum_state_t *s)
     BeginTextureMode(s->fft_rt);
     ClearBackground(BLACK);
     int h = s->plot_height;
+
+    const int stride = BAR_PIXEL_WIDTH + BAR_GAP;
+
     for (int b = 0; b < s->num_bars; b++)
     {
-        double mag_db = 10.0 * log10(s->bar_smoothed[b] + EPSILON_POWER);
+        double mag_db = 10.0 * log10(s->bar_smoothed[b] + EPSILON_POWER) + DB_OFFSET;
         if (mag_db < DB_BOTTOM)
         {
             mag_db = DB_BOTTOM;
@@ -357,7 +483,8 @@ void spectrum_render_to_texture(spectrum_state_t *s)
             continue;
         }
 
-        int x = b * BAR_PIXEL_WIDTH;
+        int x = b * stride;
+
         Rectangle src = {0, (float)(s->gradient_tex.height - bar_h), 1, (float)bar_h};
         Rectangle dst = {(float)x, (float)(h - bar_h), (float)BAR_PIXEL_WIDTH, (float)bar_h};
         DrawTexturePro(s->gradient_tex, src, dst, (Vector2){0, 0}, 0.0f, WHITE);
@@ -372,7 +499,7 @@ void spectrum_render_to_texture(spectrum_state_t *s)
             continue;
         }
 
-        double peak_db = 10.0 * log10(p + EPSILON_POWER);
+        double peak_db = 10.0 * log10(p + EPSILON_POWER) + DB_OFFSET;
         if (peak_db < DB_BOTTOM)
         {
             continue;
@@ -382,9 +509,10 @@ void spectrum_render_to_texture(spectrum_state_t *s)
             peak_db = DB_TOP;
         }
 
-        double norm = (peak_db - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
+        double norm = (double)(peak_db - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
         int y = h - (int)(norm * h);
-        DrawRectangle(b * BAR_PIXEL_WIDTH, y, BAR_PIXEL_WIDTH, 1, peak_color);
+        int x = b * stride;
+        DrawRectangle(x, y, BAR_PIXEL_WIDTH, 1, peak_color);
     }
 
     EndTextureMode();
