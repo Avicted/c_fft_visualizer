@@ -35,8 +35,8 @@ i32 main(i32 argc, char **argv)
         spectrum_set_fractional_octave(&app_state->spectrum_state, frac, index);
 
         i32 hop = FFT_HOP_SIZE;
-        long frames = (long)app_state->wave.frameCount;
-        long total = (frames > FFT_WINDOW_SIZE) ? (1 + (frames - FFT_WINDOW_SIZE) / hop) : 1;
+        ul frames = (ul)app_state->wave.frameCount;
+        ul total = (frames > FFT_WINDOW_SIZE) ? (1 + (frames - FFT_WINDOW_SIZE) / hop) : 1;
         if (total < 1)
         {
             total = 1;
