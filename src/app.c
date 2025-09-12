@@ -1,11 +1,11 @@
 #include "app.h"
 
-void app_parse_input_args(int argc, char **argv, char **input_file, int *loop_flag)
+void app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_flag)
 {
     *input_file = NULL;
     *loop_flag = 0;
 
-    for (int i = 1; i < argc; i++)
+    for (i32 i = 1; i < argc; i++)
     {
         if (strcmp(argv[i], "--loop") == 0 || strcmp(argv[i], "-l") == 0)
         {
@@ -31,9 +31,9 @@ void app_handle_input(app_state_t *app_state)
         {
             app_state->windowed_w = GetScreenWidth();
             app_state->windowed_h = GetScreenHeight();
-            int monitor = GetCurrentMonitor();
-            int mw = GetMonitorWidth(monitor);
-            int mh = GetMonitorHeight(monitor);
+            i32 monitor = GetCurrentMonitor();
+            i32 mw = GetMonitorWidth(monitor);
+            i32 mh = GetMonitorHeight(monitor);
             SetWindowSize(mw, mh);
             ToggleFullscreen();
         }
@@ -49,7 +49,7 @@ void app_handle_input(app_state_t *app_state)
             app_state->fractional_octave_index_selected = 0;
         }
 
-        double frac = FRACTIONAL_OCTAVES[app_state->fractional_octave_index_selected];
+        f64 frac = FRACTIONAL_OCTAVES[app_state->fractional_octave_index_selected];
         spectrum_set_fractional_octave(&app_state->spectrum_state,
                                        frac,
                                        app_state->fractional_octave_index_selected);
@@ -83,7 +83,7 @@ void app_platform_init(app_state_t *app_state)
     app_state->fractional_octave_index_selected = 4; // Default to 1/24 octave
 }
 
-int app_load_audio_data(app_state_t *app_state, const char *input_file)
+i32 app_load_audio_data(app_state_t *app_state, const char *input_file)
 {
     app_state->wave = LoadWave(input_file);
     if (app_state->wave.frameCount == 0)
@@ -118,7 +118,7 @@ void app_run(app_state_t *app_state)
 
     while (!WindowShouldClose())
     {
-        double dt = GetFrameTime();
+        f64 dt = GetFrameTime();
 
         app_handle_input(app_state);
 

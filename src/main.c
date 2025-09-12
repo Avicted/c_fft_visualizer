@@ -7,7 +7,7 @@
 #include "spectrum.c"
 #include "render.c"
 
-int main(int argc, char **argv)
+i32 main(i32 argc, char **argv)
 {
     app_state_t *app_state = (app_state_t *)calloc(1, sizeof(app_state_t));
     if (!app_state)
@@ -21,7 +21,7 @@ int main(int argc, char **argv)
 
     app_platform_init(app_state);
 
-    int load_result = app_load_audio_data(app_state, input_file);
+    i32 load_result = app_load_audio_data(app_state, input_file);
     if (load_result != 0)
     {
         app_cleanup(app_state);
@@ -30,11 +30,11 @@ int main(int argc, char **argv)
 
     spectrum_init(&app_state->spectrum_state, &app_state->wave, app_state->main_font);
     {
-        int index = app_state->fractional_octave_index_selected;
-        double frac = FRACTIONAL_OCTAVES[index];
+        i32 index = app_state->fractional_octave_index_selected;
+        f64 frac = FRACTIONAL_OCTAVES[index];
         spectrum_set_fractional_octave(&app_state->spectrum_state, frac, index);
 
-        int hop = FFT_HOP_SIZE;
+        i32 hop = FFT_HOP_SIZE;
         long frames = (long)app_state->wave.frameCount;
         long total = (frames > FFT_WINDOW_SIZE) ? (1 + (frames - FFT_WINDOW_SIZE) / hop) : 1;
         if (total < 1)
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
             total = 1;
         }
 
-        spectrum_set_total_windows(&app_state->spectrum_state, (int)total);
+        spectrum_set_total_windows(&app_state->spectrum_state, (i32)total);
     }
 
     app_run(app_state);

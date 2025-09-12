@@ -2,7 +2,7 @@
 #include "render.h"
 
 static int
-freq_to_bar_index(const spectrum_state_t *s, double f)
+freq_to_bar_index(const spectrum_state_t *s, f64 f)
 {
     if (f < s->f_min)
     {
@@ -13,9 +13,9 @@ freq_to_bar_index(const spectrum_state_t *s, double f)
         f = s->f_max;
     }
 
-    double r = log(f / s->f_min) / log(s->f_max / s->f_min);
-    double pos = r * (double)(s->num_bars - 1);
-    int index = (int)floor(pos + 0.5);
+    f64 r = log(f / s->f_min) / log(s->f_max / s->f_min);
+    f64 pos = r * (f64)(s->num_bars - 1);
+    i32 index = (i32)floor(pos + 0.5);
     if (index < 0)
     {
         index = 0;
@@ -31,41 +31,41 @@ freq_to_bar_index(const spectrum_state_t *s, double f)
 static void
 draw_db_grid(const spectrum_state_t *s)
 {
-    for (double dB = DB_BOTTOM; dB <= DB_TOP; dB += 12.0)
+    for (f64 dB = DB_BOTTOM; dB <= DB_TOP; dB += 12.0)
     {
-        double norm = (dB - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
-        int y = s->plot_top + (int)(s->plot_height - norm * s->plot_height);
+        f64 norm = (dB - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
+        i32 y = s->plot_top + (i32)(s->plot_height - norm * s->plot_height);
         DrawLine(s->plot_left, y, s->plot_left + s->plot_width, y, GRID_COLOR);
 
         char label[16];
         snprintf(label, sizeof(label), "%.0f", dB);
         Vector2 ts = MeasureTextEx(s->font, label, 16, 0);
-        int ly = y - (int)(ts.y / 2);
+        i32 ly = y - (i32)(ts.y / 2);
         if (ly < 2)
         {
             ly = 2;
         }
 
-        DrawTextEx(s->font, label, (Vector2){(float)(s->plot_left - (int)ts.x - 16), (float)ly}, 20, 0, WHITE);
+        DrawTextEx(s->font, label, (Vector2){(f32)(s->plot_left - (i32)ts.x - 16), (f32)ly}, 20, 0, WHITE);
     }
 }
 
 static void
 draw_freq_grid(const spectrum_state_t *s)
 {
-    const double ticks[] = {20, 31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
-    int last_x = -999999;
-    for (int i = 0; i < (int)(sizeof(ticks) / sizeof(ticks[0])); i++)
+    const f64 ticks[] = {20, 31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
+    i32 last_x = -999999;
+    for (i32 i = 0; i < (i32)(sizeof(ticks) / sizeof(ticks[0])); i++)
     {
-        double f = ticks[i];
+        f64 f = ticks[i];
         if (f < s->f_min || f > s->f_max)
         {
             continue;
         }
 
-        int index = freq_to_bar_index(s, f);
+        i32 index = freq_to_bar_index(s, f);
 
-        int x = s->plot_left + index * (BAR_PIXEL_WIDTH + BAR_GAP) + BAR_PIXEL_WIDTH / 2;
+        i32 x = s->plot_left + index * (BAR_PIXEL_WIDTH + BAR_GAP) + BAR_PIXEL_WIDTH / 2;
         if (x == last_x)
         {
             continue;
@@ -85,17 +85,17 @@ draw_freq_grid(const spectrum_state_t *s)
         }
 
         Vector2 ts = MeasureTextEx(s->font, label, 16, 0);
-        int lx = x - (int)(ts.x / 2);
+        i32 lx = x - (i32)(ts.x / 2);
         if (lx < s->plot_left)
         {
             lx = s->plot_left;
         }
-        if (lx + (int)ts.x > s->plot_left + s->plot_width)
+        if (lx + (i32)ts.x > s->plot_left + s->plot_width)
         {
-            lx = s->plot_left + s->plot_width - (int)ts.x;
+            lx = s->plot_left + s->plot_width - (i32)ts.x;
         }
 
-        DrawTextEx(s->font, label, (Vector2){(float)lx, (float)(s->plot_top + s->plot_height + 6)}, 20, 0, WHITE);
+        DrawTextEx(s->font, label, (Vector2){(f32)lx, (f32)(s->plot_top + s->plot_height + 6)}, 20, 0, WHITE);
     }
 }
 
@@ -103,8 +103,8 @@ static void
 draw_overlay(const spectrum_state_t *s)
 {
     char info[128];
-    int sr = s->sample_rate;
-    int denom = (int)(1.0 / s->fractional_octave);
+    i32 sr = s->sample_rate;
+    i32 denom = (i32)(1.0 / s->fractional_octave);
     if (denom <= 0)
     {
         denom = 1;
@@ -151,7 +151,7 @@ draw_overlay(const spectrum_state_t *s)
     snprintf(meters, sizeof(meters), "Peak: %6s dBFS\nRMS:  %6s dBFS", peak_txt, rms_txt);
 
     Vector2 ts = MeasureTextEx(s->font, meters, 20, 0);
-    float x = (float)(s->plot_left + s->plot_width - (int)ts.x - 120);
+    f32 x = (f32)(s->plot_left + s->plot_width - (i32)ts.x - 120);
     DrawTextEx(s->font, meters, (Vector2){x, 16}, 32, 0, WHITE);
 }
 
@@ -161,8 +161,8 @@ void render_draw(const spectrum_state_t *s)
     draw_freq_grid(s);
 
     DrawTexturePro(s->fft_rt.texture,
-                   (Rectangle){0, 0, (float)s->fft_rt.texture.width, (float)-s->fft_rt.texture.height},
-                   (Rectangle){(float)s->plot_left, (float)s->plot_top, (float)s->plot_width, (float)s->plot_height},
+                   (Rectangle){0, 0, (f32)s->fft_rt.texture.width, (f32)-s->fft_rt.texture.height},
+                   (Rectangle){(f32)s->plot_left, (f32)s->plot_top, (f32)s->plot_width, (f32)s->plot_height},
                    (Vector2){0, 0}, 0, WHITE);
 
     draw_overlay(s);

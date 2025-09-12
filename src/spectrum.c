@@ -5,7 +5,7 @@
 
 static void compute_bar_targets(spectrum_state_t *s);
 
-const double FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES] = {
+const f64 FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES] = {
     1.0,
     1.0 / 3.0,
     1.0 / 6.0,
@@ -14,7 +14,7 @@ const double FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES] = {
     1.0 / 48.0,
 };
 
-void spectrum_set_fractional_octave(spectrum_state_t *s, double frac, int index)
+void spectrum_set_fractional_octave(spectrum_state_t *s, f64 frac, i32 index)
 {
     if (frac <= 0.0)
     {
@@ -28,7 +28,7 @@ void spectrum_set_fractional_octave(spectrum_state_t *s, double frac, int index)
 }
 
 Texture2D
-create_gradient_texture(int height, bar_gradient_t grad)
+create_gradient_texture(i32 height, bar_gradient_t grad)
 {
     Image img = GenImageGradientLinear(1, height, 0, grad.top, grad.bottom);
     Texture2D tex = LoadTextureFromImage(img);
@@ -37,7 +37,7 @@ create_gradient_texture(int height, bar_gradient_t grad)
 }
 
 static int
-calc_num_bars_for_width(int w)
+calc_num_bars_for_width(i32 w)
 {
     if (w <= 0)
     {
@@ -50,8 +50,8 @@ calc_num_bars_for_width(int w)
 static void
 update_plot_rect(spectrum_state_t *s)
 {
-    int sw = GetScreenWidth();
-    int sh = GetScreenHeight();
+    i32 sw = GetScreenWidth();
+    i32 sh = GetScreenHeight();
     s->plot_left = MARGIN_LEFT;
     s->plot_top = MARGIN_TOP;
     s->plot_width = sw - (MARGIN_LEFT + MARGIN_RIGHT);
@@ -68,12 +68,12 @@ update_plot_rect(spectrum_state_t *s)
 }
 
 static int
-allocate_bars(spectrum_state_t *s, int num)
+allocate_bars(spectrum_state_t *s, i32 num)
 {
-    s->bar_target = (double *)calloc(num, sizeof(double));
-    s->bar_smoothed = (double *)calloc(num, sizeof(double));
-    s->peak_power = (double *)calloc(num, sizeof(double));
-    s->bar_freq_center = (double *)calloc(num, sizeof(double));
+    s->bar_target = (f64 *)calloc(num, sizeof(f64));
+    s->bar_smoothed = (f64 *)calloc(num, sizeof(f64));
+    s->peak_power = (f64 *)calloc(num, sizeof(f64));
+    s->bar_freq_center = (f64 *)calloc(num, sizeof(f64));
     if (!s->bar_target || !s->bar_smoothed || !s->peak_power || !s->bar_freq_center)
     {
         free(s->bar_target);
@@ -84,9 +84,9 @@ allocate_bars(spectrum_state_t *s, int num)
         return 0;
     }
 
-    for (int b = 0; b < num; b++)
+    for (i32 b = 0; b < num; b++)
     {
-        double t = (double)b / (double)(num - 1);
+        f64 t = (f64)b / (f64)(num - 1);
         s->bar_freq_center[b] = s->f_min * pow(s->f_max / s->f_min, t);
     }
 
@@ -108,7 +108,7 @@ free_bars(spectrum_state_t *s)
 static int
 reallocate_bars_if_needed(spectrum_state_t *s)
 {
-    int new_num = calc_num_bars_for_width(s->plot_width);
+    i32 new_num = calc_num_bars_for_width(s->plot_width);
     if (new_num < 2)
     {
         new_num = 2;
@@ -118,10 +118,10 @@ reallocate_bars_if_needed(spectrum_state_t *s)
         return 1;
     }
 
-    double *new_target = (double *)calloc(new_num, sizeof(double));
-    double *new_smoothed = (double *)calloc(new_num, sizeof(double));
-    double *new_peak = (double *)calloc(new_num, sizeof(double));
-    double *new_freq_center = (double *)calloc(new_num, sizeof(double));
+    f64 *new_target = (f64 *)calloc(new_num, sizeof(f64));
+    f64 *new_smoothed = (f64 *)calloc(new_num, sizeof(f64));
+    f64 *new_peak = (f64 *)calloc(new_num, sizeof(f64));
+    f64 *new_freq_center = (f64 *)calloc(new_num, sizeof(f64));
     if (!new_target || !new_smoothed || !new_peak || !new_freq_center)
     {
         free(new_target);
@@ -131,21 +131,21 @@ reallocate_bars_if_needed(spectrum_state_t *s)
         return 0;
     }
 
-    for (int i = 0; i < new_num; i++)
+    for (i32 i = 0; i < new_num; i++)
     {
-        double t = (double)i / (double)(new_num - 1);
+        f64 t = (f64)i / (f64)(new_num - 1);
 
         new_freq_center[i] = s->f_min * pow(s->f_max / s->f_min, t);
 
         if (s->num_bars > 0)
         {
-            double f = new_freq_center[i];
-            int closest_index = 0;
-            double min_dist = INFINITY;
+            f64 f = new_freq_center[i];
+            i32 closest_index = 0;
+            f64 min_dist = INFINITY;
 
-            for (int j = 0; j < s->num_bars; j++)
+            for (i32 j = 0; j < s->num_bars; j++)
             {
-                double dist = fabs(log(f / s->bar_freq_center[j]));
+                f64 dist = fabs(log(f / s->bar_freq_center[j]));
                 if (dist < min_dist)
                 {
                     min_dist = dist;
@@ -179,24 +179,24 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
 
     s->fft_bins = FFT_WINDOW_SIZE / 2 + 1;
     s->f_min = 20.0;
-    s->f_max = fmin(20000.0, (double)wave->sampleRate * 0.5);
+    s->f_max = fmin(20000.0, (f64)wave->sampleRate * 0.5);
     s->log_f_ratio = log(s->f_max / s->f_min);
 
     s->fractional_octave_index = 4;
     s->fractional_octave = FRACTIONAL_OCTAVES[s->fractional_octave_index];
     s->fractional_k = pow(2.0, s->fractional_octave / 2.0);
     s->hop_size = FFT_HOP_SIZE;
-    s->seconds_per_window = (double)s->hop_size / (double)wave->sampleRate;
+    s->seconds_per_window = (f64)s->hop_size / (f64)wave->sampleRate;
     s->font = font;
     s->sample_rate = wave->sampleRate;
 
-    for (int i = 0; i < FFT_WINDOW_SIZE; i++)
+    for (i32 i = 0; i < FFT_WINDOW_SIZE; i++)
     {
-        s->window[i] = 0.5 * (1.0 - cos((2.0 * PI * i) / (double)(FFT_WINDOW_SIZE - 1)));
+        s->window[i] = 0.5 * (1.0 - cos((2.0 * PI * i) / (f64)(FFT_WINDOW_SIZE - 1)));
     }
 
-    double rc = 1.0 / (2.0 * PI * HPF_CUTOFF_HZ);
-    double dt = 1.0 / (double)wave->sampleRate;
+    f64 rc = 1.0 / (2.0 * PI * HPF_CUTOFF_HZ);
+    f64 dt = 1.0 / (f64)wave->sampleRate;
     s->hpf_alpha = rc / (rc + dt);
     s->hpf_prev_x = 0.0;
     s->hpf_prev_y = 0.0;
@@ -235,22 +235,22 @@ void spectrum_destroy(spectrum_state_t *s)
     }
 }
 
-void spectrum_set_total_windows(spectrum_state_t *s, int total)
+void spectrum_set_total_windows(spectrum_state_t *s, i32 total)
 {
     s->total_windows = total;
     s->window_index = 0;
     s->accumulator = 0.0;
 }
 
-int spectrum_done(const spectrum_state_t *s)
+i32 spectrum_done(const spectrum_state_t *s)
 {
     return s->window_index >= s->total_windows;
 }
 
 void spectrum_handle_resize(spectrum_state_t *s)
 {
-    int sw = GetScreenWidth();
-    int sh = GetScreenHeight();
+    i32 sw = GetScreenWidth();
+    i32 sh = GetScreenHeight();
     if (sw == s->last_width && sh == s->last_height)
     {
         return;
@@ -274,26 +274,26 @@ void spectrum_handle_resize(spectrum_state_t *s)
 }
 
 static void
-compute_fft_window(spectrum_state_t *s, float *samples, Wave *wave)
+compute_fft_window(spectrum_state_t *s, f32 *samples, Wave *wave)
 {
-    size_t total_samples = (size_t)wave->frameCount * (size_t)wave->channels;
-    size_t start_index = (size_t)s->window_index * (size_t)s->hop_size * (size_t)wave->channels;
+    usize total_samples = (size_t)wave->frameCount * (size_t)wave->channels;
+    usize start_index = (size_t)s->window_index * (size_t)s->hop_size * (size_t)wave->channels;
 
-    double mean = 0.0;
-    static float mono_buf[FFT_WINDOW_SIZE];
+    f64 mean = 0.0;
+    static f32 mono_buf[FFT_WINDOW_SIZE];
 
-    for (int i = 0; i < FFT_WINDOW_SIZE; i++)
+    for (i32 i = 0; i < FFT_WINDOW_SIZE; i++)
     {
-        size_t si = start_index + (size_t)i * (size_t)wave->channels;
-        float mono = 0.0f;
+        usize si = start_index + (size_t)i * (size_t)wave->channels;
+        f32 mono = 0.0f;
         if (si < total_samples)
         {
             if (wave->channels == 1)
                 mono = samples[si];
             else
             {
-                float a = samples[si];
-                float b = (si + 1 < total_samples) ? samples[si + 1] : 0.0f;
+                f32 a = samples[si];
+                f32 b = (si + 1 < total_samples) ? samples[si + 1] : 0.0f;
                 mono = 0.5f * (a + b);
             }
         }
@@ -301,22 +301,22 @@ compute_fft_window(spectrum_state_t *s, float *samples, Wave *wave)
         mean += mono;
 
         // Meter accumulation (raw mono sample before mean removal / HPF / window)
-        double absx = fabs((double)mono);
+        f64 absx = fabs((f64)mono);
         if (absx > s->meter_peak_lin)
         {
             s->meter_peak_lin = absx;
         }
 
-        s->meter_sum_sq += (double)mono * (double)mono;
+        s->meter_sum_sq += (f64)mono * (f64)mono;
         s->meter_sample_count++;
     }
-    mean /= (double)FFT_WINDOW_SIZE;
+    mean /= (f64)FFT_WINDOW_SIZE;
 
     // Second pass: HPF + window
-    for (int i = 0; i < FFT_WINDOW_SIZE; i++)
+    for (i32 i = 0; i < FFT_WINDOW_SIZE; i++)
     {
-        double x = (double)mono_buf[i] - mean;
-        double y = s->hpf_alpha * (s->hpf_prev_y + x - s->hpf_prev_x);
+        f64 x = (f64)mono_buf[i] - mean;
+        f64 y = s->hpf_alpha * (s->hpf_prev_y + x - s->hpf_prev_x);
         s->hpf_prev_x = x;
         s->hpf_prev_y = y;
         s->fft_in[i] = y * s->window[i];
@@ -326,12 +326,12 @@ compute_fft_window(spectrum_state_t *s, float *samples, Wave *wave)
 
     // Correct single-sided spectrum scaling with Hann coherent gain
     // Hann coherent gain = 0.5 -> scale = 2/(N*0.5) = 4/N
-    double scale = 4.0 / (double)FFT_WINDOW_SIZE;
-    for (int i = 0; i < s->fft_bins; i++)
+    f64 scale = 4.0 / (f64)FFT_WINDOW_SIZE;
+    for (i32 i = 0; i < s->fft_bins; i++)
     {
-        double re = s->fft_out[i][0];
-        double im = s->fft_out[i][1];
-        double a = sqrt(re * re + im * im) * scale;
+        f64 re = s->fft_out[i][0];
+        f64 im = s->fft_out[i][1];
+        f64 a = sqrt(re * re + im * im) * scale;
         if (i == 0 || i == s->fft_bins - 1)
         {
             a *= 0.5;
@@ -345,19 +345,19 @@ static void
 compute_bar_targets(spectrum_state_t *s)
 {
     // Use Nyquist for Hz->bin mapping (independent of displayed f_max)
-    double max_bin = (double)(s->fft_bins - 1);
-    double nyquist = (double)s->sample_rate * 0.5;
-    double hz_to_bin = max_bin / nyquist;
+    f64 max_bin = (f64)(s->fft_bins - 1);
+    f64 nyquist = (f64)s->sample_rate * 0.5;
+    f64 hz_to_bin = max_bin / nyquist;
 
-    for (int b = 0; b < s->num_bars; b++)
+    for (i32 b = 0; b < s->num_bars; b++)
     {
         // Calculate logarithmically-spaced frequencies
-        double t = (double)b / (double)(s->num_bars - 1);
-        double f_center = s->f_min * pow(s->f_max / s->f_min, t);
+        f64 t = (f64)b / (f64)(s->num_bars - 1);
+        f64 f_center = s->f_min * pow(s->f_max / s->f_min, t);
 
         // Compute band edges using constant-Q factor
-        double f_low = f_center / s->fractional_k;
-        double f_high = f_center * s->fractional_k;
+        f64 f_low = f_center / s->fractional_k;
+        f64 f_high = f_center * s->fractional_k;
 
         if (f_low < s->f_min)
         {
@@ -369,8 +369,8 @@ compute_bar_targets(spectrum_state_t *s)
         }
 
         // Convert to FFT bin indices
-        double k_lo = f_low * hz_to_bin;
-        double k_hi = f_high * hz_to_bin;
+        f64 k_lo = f_low * hz_to_bin;
+        f64 k_hi = f_high * hz_to_bin;
 
         // Ensure we don't miss the first bin (which can contain significant energy)
         if (b == 0)
@@ -382,8 +382,8 @@ compute_bar_targets(spectrum_state_t *s)
             k_hi = max_bin;
         }
 
-        int k0 = (int)floor(k_lo);
-        int k1 = (int)floor(k_hi);
+        i32 k0 = (i32)floor(k_lo);
+        i32 k1 = (i32)floor(k_hi);
 
         // Handle special case: no bins in range
         if (k_hi <= k_lo || k1 < k0)
@@ -392,16 +392,16 @@ compute_bar_targets(spectrum_state_t *s)
             continue;
         }
 
-        double sum = 0.0;
-        double width = 0.0;
+        f64 sum = 0.0;
+        f64 width = 0.0;
 
         // Handle single-bin case
         if (k0 == k1)
         {
-            double w = k_hi - k_lo;
+            f64 w = k_hi - k_lo;
             if (w > 0.0)
             {
-                double p = s->bin_mag[k0];
+                f64 p = s->bin_mag[k0];
                 sum += p * p * w;
                 width += w;
             }
@@ -409,63 +409,63 @@ compute_bar_targets(spectrum_state_t *s)
         else // Multiple bins
         {
             // First bin (partial)
-            double frac0 = 1.0 - (k_lo - floor(k_lo));
+            f64 frac0 = 1.0 - (k_lo - floor(k_lo));
             if (frac0 > 0.0 && k0 >= 0 && k0 < s->fft_bins)
             {
-                double p = s->bin_mag[k0];
+                f64 p = s->bin_mag[k0];
                 sum += p * p * frac0;
                 width += frac0;
             }
 
             // Middle bins (full)
-            for (int k = k0 + 1; k < k1; k++)
+            for (i32 k = k0 + 1; k < k1; k++)
             {
                 if (k >= 0 && k < s->fft_bins)
                 {
-                    double p = s->bin_mag[k];
+                    f64 p = s->bin_mag[k];
                     sum += p * p;
                     width += 1.0;
                 }
             }
 
             // Last bin (partial)
-            double frac1 = k_hi - floor(k_hi);
+            f64 frac1 = k_hi - floor(k_hi);
             if (frac1 > 0.0 && k1 >= 0 && k1 < s->fft_bins)
             {
-                double p = s->bin_mag[k1];
+                f64 p = s->bin_mag[k1];
                 sum += p * p * frac1;
                 width += frac1;
             }
         }
 
-        double avg_power = (width > 0.0) ? (sum / width) : 0.0;
+        f64 avg_power = (width > 0.0) ? (sum / width) : 0.0;
 
         s->bar_target[b] = avg_power * (f_center / 1000.0);
     }
 }
 
 static void
-smooth_bars(spectrum_state_t *s, double dt)
+smooth_bars(spectrum_state_t *s, f64 dt)
 {
-    double tau_a = SMOOTH_ATTACK_MS * 0.001;
-    double tau_r = SMOOTH_RELEASE_MS * 0.001;
-    double a_up = 1.0 - exp(-dt / tau_a);
-    double a_dn = 1.0 - exp(-dt / tau_r);
+    f64 tau_a = SMOOTH_ATTACK_MS * 0.001;
+    f64 tau_r = SMOOTH_RELEASE_MS * 0.001;
+    f64 a_up = 1.0 - exp(-dt / tau_a);
+    f64 a_dn = 1.0 - exp(-dt / tau_r);
 
-    for (int b = 0; b < s->num_bars; b++)
+    for (i32 b = 0; b < s->num_bars; b++)
     {
-        double y = s->bar_smoothed[b];
-        double x = s->bar_target[b];
-        double a = (x > y) ? a_up : a_dn;
+        f64 y = s->bar_smoothed[b];
+        f64 x = s->bar_target[b];
+        f64 a = (x > y) ? a_up : a_dn;
         s->bar_smoothed[b] = y + a * (x - y);
     }
 }
 
 static void
-update_peaks(spectrum_state_t *s, double dt)
+update_peaks(spectrum_state_t *s, f64 dt)
 {
-    double decay_factor = pow(10.0, -PEAK_DECAY_DB_PER_SEC * dt / 10.0);
-    for (int b = 0; b < s->num_bars; b++)
+    f64 decay_factor = pow(10.0, -PEAK_DECAY_DB_PER_SEC * dt / 10.0);
+    for (i32 b = 0; b < s->num_bars; b++)
     {
         if (s->bar_smoothed[b] > s->peak_power[b])
         {
@@ -482,7 +482,7 @@ update_peaks(spectrum_state_t *s, double dt)
     }
 }
 
-void spectrum_update(spectrum_state_t *s, Wave *wave, float *samples, double dt)
+void spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt)
 {
     if (spectrum_done(s))
     {
@@ -498,13 +498,13 @@ void spectrum_update(spectrum_state_t *s, Wave *wave, float *samples, double dt)
         s->window_index++;
     }
 
-    const double meter_update_interval_seconds = 1.0;
+    const f64 meter_update_interval_seconds = 1.0;
     s->meter_interval_elapsed += dt;
     if (s->meter_interval_elapsed >= meter_update_interval_seconds)
     {
         if (s->meter_sample_count > 0)
         {
-            double rms_lin = sqrt(s->meter_sum_sq / (double)s->meter_sample_count);
+            f64 rms_lin = sqrt(s->meter_sum_sq / (f64)s->meter_sample_count);
             if (s->meter_peak_lin < 1e-12)
             {
                 s->meter_peak_dbfs = -INFINITY;
@@ -543,13 +543,13 @@ void spectrum_render_to_texture(spectrum_state_t *s)
 {
     BeginTextureMode(s->fft_rt);
     ClearBackground(BLACK);
-    int h = s->plot_height;
+    i32 h = s->plot_height;
 
-    const int stride = BAR_PIXEL_WIDTH + BAR_GAP;
+    const i32 stride = BAR_PIXEL_WIDTH + BAR_GAP;
 
-    for (int b = 0; b < s->num_bars; b++)
+    for (i32 b = 0; b < s->num_bars; b++)
     {
-        double mag_db = 10.0 * log10(s->bar_smoothed[b] + EPSILON_POWER) + DB_OFFSET;
+        f64 mag_db = 10.0 * log10(s->bar_smoothed[b] + EPSILON_POWER) + DB_OFFSET;
         if (mag_db < DB_BOTTOM)
         {
             mag_db = DB_BOTTOM;
@@ -559,17 +559,17 @@ void spectrum_render_to_texture(spectrum_state_t *s)
             mag_db = DB_TOP;
         }
 
-        double norm = (mag_db - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
-        int bar_h = (int)(norm * h);
+        f64 norm = (mag_db - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
+        i32 bar_h = (i32)(norm * h);
         if (bar_h <= 0)
         {
             continue;
         }
 
-        int x = b * stride;
+        i32 x = b * stride;
 
-        Rectangle src = {0, (float)(s->gradient_tex.height - bar_h), 1, (float)bar_h};
-        Rectangle dst = {(float)x, (float)(h - bar_h), (float)BAR_PIXEL_WIDTH, (float)bar_h};
+        Rectangle src = {0, (f32)(s->gradient_tex.height - bar_h), 1, (f32)bar_h};
+        Rectangle dst = {(f32)x, (f32)(h - bar_h), (f32)BAR_PIXEL_WIDTH, (f32)bar_h};
         DrawTexturePro(s->gradient_tex, src, dst, (Vector2){0, 0}, 0.0f, WHITE);
     }
 
@@ -579,15 +579,15 @@ void spectrum_render_to_texture(spectrum_state_t *s)
         s->bar_gradients[s->bar_gradient_index].top.b,
         200};
 
-    for (int b = 0; b < s->num_bars; b++)
+    for (i32 b = 0; b < s->num_bars; b++)
     {
-        double p = s->peak_power[b];
+        f64 p = s->peak_power[b];
         if (p <= 0)
         {
             continue;
         }
 
-        double peak_db = 10.0 * log10(p + EPSILON_POWER) + DB_OFFSET;
+        f64 peak_db = 10.0 * log10(p + EPSILON_POWER) + DB_OFFSET;
         if (peak_db < DB_BOTTOM)
         {
             continue;
@@ -597,9 +597,9 @@ void spectrum_render_to_texture(spectrum_state_t *s)
             peak_db = DB_TOP;
         }
 
-        double norm = (double)(peak_db - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
-        int y = h - (int)(norm * h);
-        int x = b * stride;
+        f64 norm = (f64)(peak_db - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
+        i32 y = h - (i32)(norm * h);
+        i32 x = b * stride;
         DrawRectangle(x, y, BAR_PIXEL_WIDTH, 1, peak_color);
     }
 
