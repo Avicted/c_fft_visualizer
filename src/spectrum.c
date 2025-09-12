@@ -5,6 +5,7 @@
 
 internal void compute_bar_targets(spectrum_state_t *s);
 
+// @NOTE(Victor): Unused for now...
 // internal f64
 // db_to_volume(f64 db)
 // {

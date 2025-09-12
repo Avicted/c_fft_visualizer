@@ -9,8 +9,7 @@
 
 typedef struct app_state_t
 {
-    i32 is_running;
-    i32 is_fullscreen;
+    i32 running;
     i32 windowed_w;
     i32 windowed_h;
     i32 loop_flag;

@@ -116,9 +116,11 @@ void app_run(app_state_t *app_state)
 {
     PlaySound(app_state->sound);
 
+    app_state->running = true;
+
     while (!WindowShouldClose())
     {
-        f64 dt = GetFrameTime();
+        const f64 dt = GetFrameTime();
 
         app_handle_input(app_state);
 
@@ -145,6 +147,8 @@ void app_run(app_state_t *app_state)
         render_draw(&app_state->spectrum_state);
         EndDrawing();
     }
+
+    app_state->running = false;
 }
 
 void app_cleanup(app_state_t *app_state)

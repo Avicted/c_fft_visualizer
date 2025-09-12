@@ -15,10 +15,9 @@
 #define FRACTIONAL_OCTAVE_1_48 (1.0 / 48.0)
 
 #define NUM_FRACTIONAL_OCTAVES 6
+#define NUM_BAR_GRADIENTS 3
 
 extern const f64 FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES];
-
-#define NUM_BAR_GRADIENTS 3
 
 typedef struct
 {
@@ -32,10 +31,10 @@ typedef struct spectrum_state_t
     bar_gradient_t bar_gradients[NUM_BAR_GRADIENTS];
 
     f64 fft_in[FFT_WINDOW_SIZE];
-    fftw_complex fft_out[FFT_WINDOW_SIZE / 2 + 1];
+    fftw_complex fft_out[(FFT_WINDOW_SIZE / 2) + 1];
     fftw_plan fft_plan;
     i32 fft_bins;
-    f64 bin_mag[FFT_WINDOW_SIZE / 2 + 1];
+    f64 bin_mag[(FFT_WINDOW_SIZE / 2) + 1];
 
     i32 num_bars;
     i32 sample_rate;
