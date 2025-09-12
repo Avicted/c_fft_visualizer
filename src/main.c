@@ -30,9 +30,9 @@ int main(int argc, char **argv)
 
     spectrum_init(&app_state->spectrum_state, &app_state->wave, app_state->main_font);
     {
-        int idx = app_state->fractional_octave_index_selected;
-        double frac = FRACTIONAL_OCTAVES[idx];
-        spectrum_set_fractional_octave(&app_state->spectrum_state, frac, idx);
+        int index = app_state->fractional_octave_index_selected;
+        double frac = FRACTIONAL_OCTAVES[index];
+        spectrum_set_fractional_octave(&app_state->spectrum_state, frac, index);
 
         int hop = FFT_HOP_SIZE;
         long frames = (long)app_state->wave.frameCount;

@@ -140,7 +140,7 @@ reallocate_bars_if_needed(spectrum_state_t *s)
         if (s->num_bars > 0)
         {
             double f = new_freq_center[i];
-            int closest_idx = 0;
+            int closest_index = 0;
             double min_dist = INFINITY;
 
             for (int j = 0; j < s->num_bars; j++)
@@ -149,13 +149,13 @@ reallocate_bars_if_needed(spectrum_state_t *s)
                 if (dist < min_dist)
                 {
                     min_dist = dist;
-                    closest_idx = j;
+                    closest_index = j;
                 }
             }
 
-            new_target[i] = s->bar_target[closest_idx];
-            new_smoothed[i] = s->bar_smoothed[closest_idx];
-            new_peak[i] = s->peak_power[closest_idx];
+            new_target[i] = s->bar_target[closest_index];
+            new_smoothed[i] = s->bar_smoothed[closest_index];
+            new_peak[i] = s->peak_power[closest_index];
         }
     }
 
@@ -192,10 +192,10 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
 
     for (int i = 0; i < FFT_WINDOW_SIZE; i++)
     {
-        s->window[i] = 0.5 * (1.0 - cos((2.0 * M_PI * i) / (double)(FFT_WINDOW_SIZE - 1)));
+        s->window[i] = 0.5 * (1.0 - cos((2.0 * PI * i) / (double)(FFT_WINDOW_SIZE - 1)));
     }
 
-    double rc = 1.0 / (2.0 * M_PI * HPF_CUTOFF_HZ);
+    double rc = 1.0 / (2.0 * PI * HPF_CUTOFF_HZ);
     double dt = 1.0 / (double)wave->sampleRate;
     s->hpf_alpha = rc / (rc + dt);
     s->hpf_prev_x = 0.0;

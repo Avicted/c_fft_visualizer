@@ -15,17 +15,17 @@ freq_to_bar_index(const spectrum_state_t *s, double f)
 
     double r = log(f / s->f_min) / log(s->f_max / s->f_min);
     double pos = r * (double)(s->num_bars - 1);
-    int idx = (int)floor(pos + 0.5);
-    if (idx < 0)
+    int index = (int)floor(pos + 0.5);
+    if (index < 0)
     {
-        idx = 0;
+        index = 0;
     }
-    if (idx >= s->num_bars)
+    if (index >= s->num_bars)
     {
-        idx = s->num_bars - 1;
+        index = s->num_bars - 1;
     }
 
-    return idx;
+    return index;
 }
 
 static void
@@ -63,9 +63,9 @@ draw_freq_grid(const spectrum_state_t *s)
             continue;
         }
 
-        int idx = freq_to_bar_index(s, f);
+        int index = freq_to_bar_index(s, f);
 
-        int x = s->plot_left + idx * (BAR_PIXEL_WIDTH + BAR_GAP) + BAR_PIXEL_WIDTH / 2;
+        int x = s->plot_left + index * (BAR_PIXEL_WIDTH + BAR_GAP) + BAR_PIXEL_WIDTH / 2;
         if (x == last_x)
         {
             continue;
