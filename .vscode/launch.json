@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/c_fft_visualizer",
             "args": [
-                "dl.wav",
+                "I felt like I should record this (8).wav",
                 "--loop"
             ],
             "stopAtEntry": false,

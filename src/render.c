@@ -148,7 +148,7 @@ draw_overlay(const spectrum_state_t *s)
         rms_txt = rmsbuf;
     }
 
-    snprintf(meters, sizeof(meters), "Peak: %6s dbFS\nRMS:  %6s dbFS", peak_txt, rms_txt);
+    snprintf(meters, sizeof(meters), "Peak: %6s dBFS\nRMS:  %6s dBFS", peak_txt, rms_txt);
 
     Vector2 ts = MeasureTextEx(s->font, meters, 20, 0);
     f32 x = (f32)(s->plot_left + s->plot_width - (i32)ts.x - 120);
