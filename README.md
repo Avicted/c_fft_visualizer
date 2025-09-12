@@ -1,6 +1,12 @@
 # C FFT Visualizer
 
-Visualize the Fast Fourier Transform (FFT) of audio signals in real-time using C, Raylib, and FFTW3.
+Visualize the Fast Fourier Transform (FFT) of audio signals in real-time using C, FFTW3 and Raylib.
+
+> [!WARNING]
+> Early prototype.
+> Only supports .wav audio files for now.
+> Sample rates of 48kHz and higher will make the visualization lag relative to the audio.
+
 
 ## Requirements
 - C Compiler
