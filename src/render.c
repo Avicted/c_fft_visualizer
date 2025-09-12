@@ -31,14 +31,14 @@ freq_to_bar_index(const spectrum_state_t *s, f64 f)
 internal void
 draw_db_grid(const spectrum_state_t *s)
 {
-    for (f64 dB = DB_BOTTOM; dB <= DB_TOP; dB += 12.0)
+    for (f64 db = DB_BOTTOM; db <= DB_TOP; db += 12.0)
     {
-        f64 norm = (dB - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
+        f64 norm = (db - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
         i32 y = s->plot_top + (i32)(s->plot_height - norm * s->plot_height);
         DrawLine(s->plot_left, y, s->plot_left + s->plot_width, y, GRID_COLOR);
 
         char label[16];
-        snprintf(label, sizeof(label), "%.0f", dB);
+        snprintf(label, sizeof(label), "%.0f", db);
         Vector2 ts = MeasureTextEx(s->font, label, 16, 0);
         i32 ly = y - (i32)(ts.y / 2);
         if (ly < 2)
@@ -148,7 +148,7 @@ draw_overlay(const spectrum_state_t *s)
         rms_txt = rmsbuf;
     }
 
-    snprintf(meters, sizeof(meters), "Peak: %6s dBFS\nRMS:  %6s dBFS", peak_txt, rms_txt);
+    snprintf(meters, sizeof(meters), "Peak: %6s dbFS\nRMS:  %6s dbFS", peak_txt, rms_txt);
 
     Vector2 ts = MeasureTextEx(s->font, meters, 20, 0);
     f32 x = (f32)(s->plot_left + s->plot_width - (i32)ts.x - 120);

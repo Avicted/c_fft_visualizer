@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/c_fft_visualizer",
             "args": [
-                "beyond.wav",
+                "dl.wav",
                 "--loop"
             ],
             "stopAtEntry": false,

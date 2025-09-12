@@ -6,15 +6,15 @@
 internal void compute_bar_targets(spectrum_state_t *s);
 
 // internal f64
-// dB_to_volume(f64 dB)
+// db_to_volume(f64 db)
 // {
-//     return pow(10.0, 0.05 * dB);
+//     return pow(10.0, 0.05 * db);
 // }
 
 internal f64
-volume_to_dB(f64 volume, f64 epsilon_power, f64 dB_offset)
+volume_to_db(f64 volume, f64 epsilon_power, f64 db_offset)
 {
-    return 10.0 * log10(volume + epsilon_power) + dB_offset;
+    return 10.0 * log10(volume + epsilon_power) + db_offset;
 }
 
 const f64 FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES] = {
@@ -561,7 +561,7 @@ void spectrum_render_to_texture(spectrum_state_t *s)
 
     for (i32 b = 0; b < s->num_bars; b++)
     {
-        f64 mag_db = volume_to_dB(s->bar_smoothed[b], EPSILON_POWER, DB_OFFSET);
+        f64 mag_db = volume_to_db(s->bar_smoothed[b], EPSILON_POWER, DB_OFFSET);
 
         if (mag_db < DB_BOTTOM)
         {
@@ -600,7 +600,7 @@ void spectrum_render_to_texture(spectrum_state_t *s)
             continue;
         }
 
-        f64 peak_db = volume_to_dB(peak_power, EPSILON_POWER, DB_OFFSET);
+        f64 peak_db = volume_to_db(peak_power, EPSILON_POWER, DB_OFFSET);
         if (peak_db < DB_BOTTOM)
         {
             continue;
