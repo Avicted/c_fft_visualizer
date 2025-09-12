@@ -1,7 +1,7 @@
 #include <math.h>
 #include "render.h"
 
-static int
+internal i32
 freq_to_bar_index(const spectrum_state_t *s, f64 f)
 {
     if (f < s->f_min)
@@ -28,7 +28,7 @@ freq_to_bar_index(const spectrum_state_t *s, f64 f)
     return index;
 }
 
-static void
+internal void
 draw_db_grid(const spectrum_state_t *s)
 {
     for (f64 dB = DB_BOTTOM; dB <= DB_TOP; dB += 12.0)
@@ -50,7 +50,7 @@ draw_db_grid(const spectrum_state_t *s)
     }
 }
 
-static void
+internal void
 draw_freq_grid(const spectrum_state_t *s)
 {
     const f64 ticks[] = {20, 31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
@@ -99,7 +99,7 @@ draw_freq_grid(const spectrum_state_t *s)
     }
 }
 
-static void
+internal void
 draw_overlay(const spectrum_state_t *s)
 {
     char info[128];

@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define internal static      // functions/variables with internal linkage (file-local scope)
+#define local_persist static // variables inside functions that retain their value between calls
+#define global static        // file-scope variables meant to act as globals within that file
+
 // Unsigned integers
 typedef uint8_t u8;
 typedef uint16_t u16;

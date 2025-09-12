@@ -3,7 +3,7 @@
 #include <math.h>
 #include "spectrum.h"
 
-static void compute_bar_targets(spectrum_state_t *s);
+internal void compute_bar_targets(spectrum_state_t *s);
 
 const f64 FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES] = {
     1.0,
@@ -36,7 +36,7 @@ create_gradient_texture(i32 height, bar_gradient_t grad)
     return tex;
 }
 
-static int
+internal i32
 calc_num_bars_for_width(i32 w)
 {
     if (w <= 0)
@@ -47,7 +47,7 @@ calc_num_bars_for_width(i32 w)
     return w / (BAR_PIXEL_WIDTH + BAR_GAP);
 }
 
-static void
+internal void
 update_plot_rect(spectrum_state_t *s)
 {
     i32 sw = GetScreenWidth();
@@ -67,7 +67,7 @@ update_plot_rect(spectrum_state_t *s)
     }
 }
 
-static int
+internal int
 allocate_bars(spectrum_state_t *s, i32 num)
 {
     s->bar_target = (f64 *)calloc(num, sizeof(f64));
@@ -94,7 +94,7 @@ allocate_bars(spectrum_state_t *s, i32 num)
     return 1;
 }
 
-static void
+internal void
 free_bars(spectrum_state_t *s)
 {
     free(s->bar_target);
@@ -105,7 +105,7 @@ free_bars(spectrum_state_t *s)
     s->num_bars = 0;
 }
 
-static int
+internal int
 reallocate_bars_if_needed(spectrum_state_t *s)
 {
     i32 new_num = calc_num_bars_for_width(s->plot_width);
@@ -273,14 +273,14 @@ void spectrum_handle_resize(spectrum_state_t *s)
     reallocate_bars_if_needed(s);
 }
 
-static void
+internal void
 compute_fft_window(spectrum_state_t *s, f32 *samples, Wave *wave)
 {
     usize total_samples = (size_t)wave->frameCount * (size_t)wave->channels;
     usize start_index = (size_t)s->window_index * (size_t)s->hop_size * (size_t)wave->channels;
 
     f64 mean = 0.0;
-    static f32 mono_buf[FFT_WINDOW_SIZE];
+    local_persist f32 mono_buf[FFT_WINDOW_SIZE];
 
     for (i32 i = 0; i < FFT_WINDOW_SIZE; i++)
     {
@@ -341,7 +341,7 @@ compute_fft_window(spectrum_state_t *s, f32 *samples, Wave *wave)
     }
 }
 
-static void
+internal void
 compute_bar_targets(spectrum_state_t *s)
 {
     // Use Nyquist for Hz->bin mapping (independent of displayed f_max)
@@ -444,7 +444,7 @@ compute_bar_targets(spectrum_state_t *s)
     }
 }
 
-static void
+internal void
 smooth_bars(spectrum_state_t *s, f64 dt)
 {
     f64 tau_a = SMOOTH_ATTACK_MS * 0.001;
@@ -461,7 +461,7 @@ smooth_bars(spectrum_state_t *s, f64 dt)
     }
 }
 
-static void
+internal void
 update_peaks(spectrum_state_t *s, f64 dt)
 {
     f64 decay_factor = pow(10.0, -PEAK_DECAY_DB_PER_SEC * dt / 10.0);
