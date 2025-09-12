@@ -4,7 +4,9 @@ Visualize the Fast Fourier Transform (FFT) of audio signals in real-time using C
 
 > [!WARNING]
 > Early prototype.
+
 > Only supports .wav audio files for now.
+
 > Sample rates of 48kHz and higher will make the visualization lag relative to the audio.
 
 
