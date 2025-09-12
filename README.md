@@ -21,6 +21,7 @@ sudo pacman -S clang raylib fftw
 
 ## Build and run
 ```bash
+chmod +x build.sh
 ./build.sh
 
 ./build/c_fft_visualizer <path_to_audio_file> <--loop (optional)>
