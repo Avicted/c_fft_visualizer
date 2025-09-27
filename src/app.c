@@ -174,7 +174,106 @@ void app_handle_input(app_state_t *app_state)
     }
 }
 
-void app_platform_init(app_state_t *app_state)
+internal i32
+audio_callback(
+    const void *input_buffer,
+    void *output_buffer,
+    unsigned long frames_per_buffer,
+    const PaStreamCallbackTimeInfo *time_info,
+    PaStreamCallbackFlags status_flags,
+    void *user_data)
+{
+    (void)output_buffer;
+    (void)frames_per_buffer;
+    (void)time_info;
+    (void)status_flags;
+
+    app_state_t *app = (app_state_t *)user_data;
+    const float *in = (const float *)input_buffer;
+
+    // For now we don't push captured audio into the visualization buffers here.
+    // We can copy the incoming frames into a ring buffer or feed spectrum_update
+    // as needed. Keep callback tiny to avoid xruns.
+    (void)app;
+    (void)in;
+
+    return (int)paContinue;
+}
+
+i32 app_init_audio_capture(app_state_t *app_state)
+{
+    PaError err;
+    err = Pa_Initialize();
+
+    if (err != paNoError)
+    {
+        fprintf(stderr, "ERROR: PortAudio initialization error: %s\n", Pa_GetErrorText(err));
+        return 1;
+    }
+
+    int num_devices = Pa_GetDeviceCount();
+    if (num_devices < 0)
+    {
+        fprintf(stderr, "ERROR: Pa_GetDeviceCount returned 0x%x\n", num_devices);
+        return 1;
+    }
+
+    printf("Available audio devices:\n");
+    const PaDeviceInfo *device_info;
+    for (int i = 0; i < num_devices; i++)
+    {
+        device_info = Pa_GetDeviceInfo(i);
+        printf("  Device %d: %s\n", i, device_info->name);
+    }
+
+    // Allow selecting device via environment variable PA_DEVICE_INDEX, otherwise use default input
+    i32 selected_device_index = Pa_GetDefaultInputDevice();
+    const char *env = getenv("PA_DEVICE_INDEX");
+    if (env)
+    {
+        i32 idx = atoi(env);
+        if (idx >= 0 && idx < num_devices)
+        {
+            selected_device_index = idx;
+        }
+    }
+
+    app_state->selected_device_info = (PaDeviceInfo *)Pa_GetDeviceInfo(selected_device_index);
+
+    PaStreamParameters in_params;
+    in_params.device = selected_device_index;
+    in_params.channelCount = INPUT_NUM_CHANNELS;
+    in_params.sampleFormat = paFloat32;
+    in_params.suggestedLatency = app_state->selected_device_info->defaultLowInputLatency;
+    in_params.hostApiSpecificStreamInfo = NULL;
+
+    err = Pa_OpenStream(
+        &app_state->selected_device_stream,
+        &in_params,
+        NULL,
+        (f64)INPUT_SAMPLE_RATE,
+        (ul)INPUT_FRAMES_PER_BUFFER,
+        paClipOff,
+        audio_callback,
+        app_state);
+
+    if (err != paNoError)
+    {
+        printf("PortAudio stream error: %s\n", Pa_GetErrorText(err));
+        return 1;
+    }
+
+    err = Pa_StartStream(app_state->selected_device_stream);
+    if (err != paNoError)
+    {
+        printf("PortAudio start stream error: %s\n", Pa_GetErrorText(err));
+        return 1;
+    }
+
+    return 0;
+}
+
+i32 app_platform_init(app_state_t *app_state)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "FFT Visualizer");
@@ -187,6 +286,14 @@ void app_platform_init(app_state_t *app_state)
     app_state->windowed_h = WINDOW_HEIGHT;
     app_state->fractional_octave_index_selected = 4; // Default to 1/24 octave
     TraceLog(LOG_INFO, "Keys: O=Frac octave, P=Pink comp, A=dB avg, F=Avg preset, H=Peak hold");
+
+    if (app_init_audio_capture(app_state) != 0)
+    {
+        fprintf(stderr, "ERROR: Failed to initialize audio capture\n");
+        return 1;
+    }
+
+    return 0;
 }
 
 i32 app_load_audio_data(app_state_t *app_state, const char *input_file)

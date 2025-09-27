@@ -19,13 +19,16 @@ i32 main(i32 argc, char **argv)
     const char *input_file = NULL;
     app_parse_input_args(argc, argv, (char **)&input_file, &app_state->loop_flag);
 
-    app_platform_init(app_state);
-
-    i32 load_result = app_load_audio_data(app_state, input_file);
-    if (load_result != 0)
+    if (app_platform_init(app_state) != 0)
     {
         app_cleanup(app_state);
-        return load_result;
+        return 1;
+    }
+
+    if (app_load_audio_data(app_state, input_file) != 0)
+    {
+        app_cleanup(app_state);
+        return 1;
     }
 
     spectrum_init(&app_state->spectrum_state, &app_state->wave, app_state->main_font);
