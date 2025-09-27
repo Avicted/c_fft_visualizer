@@ -43,6 +43,16 @@ typedef struct spectrum_state_t
     f64 *peak_power;
     f64 *bar_freq_center;
 
+    f64 *peak_hold_timer;
+
+    bool pinking_enabled;
+    i32 db_smoothing_enabled;
+    f64 smooth_attack_ms;
+    f64 smooth_release_ms;
+    f64 db_smooth_attack_ms;
+    f64 db_smooth_release_ms;
+    f64 peak_hold_seconds;
+
     f64 f_min;
     f64 f_max;
     f64 log_f_ratio;

@@ -5,17 +5,17 @@
 
 internal void compute_bar_targets(spectrum_state_t *s);
 
-// @NOTE(Victor): Unused for now...
-// internal f64
-// db_to_volume(f64 db)
-// {
-//     return pow(10.0, 0.05 * db);
-// }
-
 internal f64
 volume_to_db(f64 volume, f64 epsilon_power, f64 db_offset)
 {
     return 10.0 * log10(volume + epsilon_power) + db_offset;
+}
+
+internal f64
+db_to_volume(f64 db, f64 epsilon_power, f64 db_offset)
+{
+    f64 p = pow(10.0, (db - db_offset) / 10.0) - epsilon_power;
+    return (p > 0.0) ? p : 0.0;
 }
 
 const f64 FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES] = {
@@ -87,13 +87,15 @@ allocate_bars(spectrum_state_t *s, i32 num)
     s->bar_smoothed = (f64 *)calloc(num, sizeof(f64));
     s->peak_power = (f64 *)calloc(num, sizeof(f64));
     s->bar_freq_center = (f64 *)calloc(num, sizeof(f64));
-    if (!s->bar_target || !s->bar_smoothed || !s->peak_power || !s->bar_freq_center)
+    s->peak_hold_timer = (f64 *)calloc(num, sizeof(f64));
+    if (!s->bar_target || !s->bar_smoothed || !s->peak_power || !s->bar_freq_center || !s->peak_hold_timer)
     {
         free(s->bar_target);
         free(s->bar_smoothed);
         free(s->peak_power);
         free(s->bar_freq_center);
-        s->bar_target = s->bar_smoothed = s->peak_power = s->bar_freq_center = NULL;
+        free(s->peak_hold_timer);
+        s->bar_target = s->bar_smoothed = s->peak_power = s->bar_freq_center = s->peak_hold_timer = NULL;
         return 0;
     }
 
@@ -114,7 +116,8 @@ free_bars(spectrum_state_t *s)
     free(s->bar_smoothed);
     free(s->peak_power);
     free(s->bar_freq_center);
-    s->bar_target = s->bar_smoothed = s->peak_power = s->bar_freq_center = NULL;
+    free(s->peak_hold_timer);
+    s->bar_target = s->bar_smoothed = s->peak_power = s->bar_freq_center = s->peak_hold_timer = NULL;
     s->num_bars = 0;
 }
 
@@ -135,12 +138,14 @@ reallocate_bars_if_needed(spectrum_state_t *s)
     f64 *new_smoothed = (f64 *)calloc(new_num, sizeof(f64));
     f64 *new_peak = (f64 *)calloc(new_num, sizeof(f64));
     f64 *new_freq_center = (f64 *)calloc(new_num, sizeof(f64));
-    if (!new_target || !new_smoothed || !new_peak || !new_freq_center)
+    f64 *new_peak_hold = (f64 *)calloc(new_num, sizeof(f64));
+    if (!new_target || !new_smoothed || !new_peak || !new_freq_center || !new_peak_hold)
     {
         free(new_target);
         free(new_smoothed);
         free(new_peak);
         free(new_freq_center);
+        free(new_peak_hold);
         return 0;
     }
 
@@ -169,6 +174,7 @@ reallocate_bars_if_needed(spectrum_state_t *s)
             new_target[i] = s->bar_target[closest_index];
             new_smoothed[i] = s->bar_smoothed[closest_index];
             new_peak[i] = s->peak_power[closest_index];
+            new_peak_hold[i] = s->peak_hold_timer[closest_index];
         }
     }
 
@@ -177,6 +183,7 @@ reallocate_bars_if_needed(spectrum_state_t *s)
     s->bar_smoothed = new_smoothed;
     s->peak_power = new_peak;
     s->bar_freq_center = new_freq_center;
+    s->peak_hold_timer = new_peak_hold;
     s->num_bars = new_num;
     return 1;
 }
@@ -228,6 +235,14 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     s->meter_sample_count = 0;
     s->meter_rms_dbfs = NAN;
     s->meter_peak_dbfs = NAN;
+
+    s->pinking_enabled = 1;
+    s->db_smoothing_enabled = 1;
+    s->smooth_attack_ms = SMOOTH_ATTACK_MS;
+    s->smooth_release_ms = SMOOTH_RELEASE_MS;
+    s->db_smooth_attack_ms = DB_SMOOTH_ATTACK_MS;
+    s->db_smooth_release_ms = DB_SMOOTH_RELEASE_MS;
+    s->peak_hold_seconds = PEAK_HOLD_SEC;
 }
 
 void spectrum_destroy(spectrum_state_t *s)
@@ -453,17 +468,24 @@ compute_bar_targets(spectrum_state_t *s)
 
         f64 avg_power = (width > 0.0) ? (sum / width) : 0.0;
 
-        s->bar_target[b] = avg_power * (f_center / 1000.0);
+        if (s->pinking_enabled)
+        {
+            s->bar_target[b] = avg_power * (f_center / 1000.0);
+        }
+        else
+        {
+            s->bar_target[b] = avg_power;
+        }
     }
 }
 
 internal void
-smooth_bars(spectrum_state_t *s, f64 dt)
+smooth_bars_linear(spectrum_state_t *s, f64 dt)
 {
-    f64 tau_a = SMOOTH_ATTACK_MS * 0.001;
-    f64 tau_r = SMOOTH_RELEASE_MS * 0.001;
-    f64 a_up = 1.0 - exp(-dt / tau_a);
-    f64 a_dn = 1.0 - exp(-dt / tau_r);
+    f64 tau_a = s->smooth_attack_ms * 0.001;
+    f64 tau_r = s->smooth_release_ms * 0.001;
+    f64 a_up = (tau_a > 0.0) ? (1.0 - exp(-dt / tau_a)) : 1.0;
+    f64 a_dn = (tau_r > 0.0) ? (1.0 - exp(-dt / tau_r)) : 1.0;
 
     for (i32 b = 0; b < s->num_bars; b++)
     {
@@ -471,6 +493,24 @@ smooth_bars(spectrum_state_t *s, f64 dt)
         f64 x = s->bar_target[b];
         f64 a = (x > y) ? a_up : a_dn;
         s->bar_smoothed[b] = y + a * (x - y);
+    }
+}
+
+internal void
+smooth_bars_db(spectrum_state_t *s, f64 dt)
+{
+    f64 tau_a = s->db_smooth_attack_ms * 0.001;
+    f64 tau_r = s->db_smooth_release_ms * 0.001;
+    f64 a_up = (tau_a > 0.0) ? (1.0 - exp(-dt / tau_a)) : 1.0;
+    f64 a_dn = (tau_r > 0.0) ? (1.0 - exp(-dt / tau_r)) : 1.0;
+
+    for (i32 b = 0; b < s->num_bars; b++)
+    {
+        f64 x_db = volume_to_db(s->bar_target[b], EPSILON_POWER, DB_OFFSET);
+        f64 y_db = volume_to_db(s->bar_smoothed[b], EPSILON_POWER, DB_OFFSET);
+        f64 a = (x_db > y_db) ? a_up : a_dn;
+        f64 z_db = y_db + a * (x_db - y_db);
+        s->bar_smoothed[b] = db_to_volume(z_db, EPSILON_POWER, DB_OFFSET);
     }
 }
 
@@ -483,13 +523,25 @@ update_peaks(spectrum_state_t *s, f64 dt)
         if (s->bar_smoothed[b] > s->peak_power[b])
         {
             s->peak_power[b] = s->bar_smoothed[b];
+            s->peak_hold_timer[b] = s->peak_hold_seconds;
         }
         else
         {
-            s->peak_power[b] *= decay_factor;
-            if (s->peak_power[b] < s->bar_smoothed[b])
+            if (s->peak_hold_timer[b] > 0.0)
             {
-                s->peak_power[b] = s->bar_smoothed[b];
+                s->peak_hold_timer[b] -= dt;
+                if (s->peak_hold_timer[b] < 0.0)
+                {
+                    s->peak_hold_timer[b] = 0.0;
+                }
+            }
+            else
+            {
+                s->peak_power[b] *= decay_factor;
+                if (s->peak_power[b] < s->bar_smoothed[b])
+                {
+                    s->peak_power[b] = s->bar_smoothed[b];
+                }
             }
         }
     }
@@ -548,7 +600,15 @@ void spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt)
         s->meter_sample_count = 0;
     }
 
-    smooth_bars(s, dt);
+    if (s->db_smoothing_enabled)
+    {
+        smooth_bars_db(s, dt);
+    }
+    else
+    {
+        smooth_bars_linear(s, dt);
+    }
+
     update_peaks(s, dt);
 }
 

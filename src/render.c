@@ -113,6 +113,15 @@ draw_overlay(const spectrum_state_t *s)
     snprintf(info, sizeof(info), "Sample Rate: %d Hz | Fractional Oct. 1/%d", sr, denom);
     DrawTextEx(s->font, info, (Vector2){80, 16}, 25, 0, WHITE);
 
+    char modes[128];
+    snprintf(modes, sizeof(modes),
+             "Avg: %s  | Pink: %s | Hold: %s",
+             s->db_smoothing_enabled ? "dB" : "Lin",
+             s->pinking_enabled ? "On" : "Off",
+             (s->peak_hold_seconds > 0.0) ? "On" : "Off");
+
+    DrawTextEx(s->font, modes, (Vector2){80, 44}, 20, 0, (Color){200, 200, 200, 255});
+
     char meters[96];
     const char *peak_txt;
     const char *rms_txt;

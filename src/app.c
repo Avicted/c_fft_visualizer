@@ -67,6 +67,54 @@ void app_handle_input(app_state_t *app_state)
         }
         s->gradient_tex = create_gradient_texture(s->plot_height, s->bar_gradients[s->bar_gradient_index]);
     }
+
+    if (IsKeyPressed(KEY_P))
+    {
+        app_state->spectrum_state.pinking_enabled ^= 1;
+    }
+
+    if (IsKeyPressed(KEY_A))
+    {
+        app_state->spectrum_state.db_smoothing_enabled ^= 1;
+    }
+
+    if (IsKeyPressed(KEY_F))
+    {
+        spectrum_state_t *s = &app_state->spectrum_state;
+        static int fast = 0;
+        fast ^= 1;
+        if (fast)
+        {
+            s->db_smooth_attack_ms = 20.0;
+            s->db_smooth_release_ms = 600.0;
+        }
+        else
+        {
+            s->db_smooth_attack_ms = 10.0;
+            s->db_smooth_release_ms = 1200.0;
+        }
+    }
+
+    if (IsKeyPressed(KEY_H))
+    {
+        spectrum_state_t *s = &app_state->spectrum_state;
+        if (s->peak_hold_seconds <= 0.0)
+        {
+            s->peak_hold_seconds = 0.5;
+        }
+        else if (s->peak_hold_seconds < 1.0)
+        {
+            s->peak_hold_seconds = 1.0;
+        }
+        else if (s->peak_hold_seconds < 2.0)
+        {
+            s->peak_hold_seconds = 2.0;
+        }
+        else
+        {
+            s->peak_hold_seconds = 0.0;
+        }
+    }
 }
 
 void app_platform_init(app_state_t *app_state)
@@ -81,6 +129,7 @@ void app_platform_init(app_state_t *app_state)
     app_state->windowed_w = WINDOW_WIDTH;
     app_state->windowed_h = WINDOW_HEIGHT;
     app_state->fractional_octave_index_selected = 4; // Default to 1/24 octave
+    TraceLog(LOG_INFO, "Keys: O=Frac octave, P=Pink comp, A=dB avg, F=Avg preset, H=Peak hold");
 }
 
 i32 app_load_audio_data(app_state_t *app_state, const char *input_file)
