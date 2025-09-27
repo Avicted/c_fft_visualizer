@@ -98,10 +98,9 @@ draw_freq_grid(const spectrum_state_t *s)
         DrawTextEx(s->font, label, (Vector2){(f32)lx, (f32)(s->plot_top + s->plot_height + 6)}, 20, 0, WHITE);
     }
 }
-V
 
-    internal void
-    draw_overlay(const spectrum_state_t *s)
+internal void
+draw_overlay(const spectrum_state_t *s)
 {
     char info[128];
     i32 sr = s->sample_rate;
