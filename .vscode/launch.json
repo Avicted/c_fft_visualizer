@@ -9,6 +9,7 @@
             "args": [
                 "GLBTM.wav",
                 "--loop"
+                // "--mic"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

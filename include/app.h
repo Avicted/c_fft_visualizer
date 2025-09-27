@@ -26,9 +26,17 @@ typedef struct
 
     PaDeviceInfo *selected_device_info;
     PaStream *selected_device_stream;
+
+    // Live mic mode
+    i32 mic_mode;                    // 1=use mic input, 0=use WAV file
+    f32 *mic_ring;                   // mono ring buffer for captured samples
+    ul mic_ring_capacity;            // capacity in frames
+    volatile ul mic_ring_write;      // producer index (callback)
+    volatile ul mic_ring_read;       // consumer index (main thread)
+    f32 mic_window[FFT_WINDOW_SIZE]; // sliding window buffer for FFT
 } app_state_t;
 
-void app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_flag);
+void app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_flag, i32 *mic_mode);
 void app_handle_input(app_state_t *app_state);
 i32 app_init_audio_capture(app_state_t *app_state);
 i32 app_platform_init(app_state_t *app_state);
