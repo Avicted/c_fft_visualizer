@@ -7,8 +7,9 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/c_fft_visualizer",
             "args": [
-                "ängel.wav",
+                "GLBTM.wav",
                 "--loop"
+                // "--mic"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

@@ -1,10 +1,10 @@
 # C FFT Visualizer
 
-Visualize the Fast Fourier Transform (FFT) of audio signals in real-time using C, FFTW3 and Raylib. Includes RTA-style smoothing, per-band peak-hold, and pink-noise compensation.
+Visualize the Fast Fourier Transform (FFT) of audio signals in real-time using C, FFTW3, Raylib and PortAudio. Includes RTA-style smoothing, per-band peak-hold, and pink-noise compensation.
 
 > [!WARNING]
 > Early prototype.
-> Only supports .wav audio files for now.
+> Only supports .wav audio files for now or Live microphone.
 > Sample rates of 48kHz and higher may make the visualization lag relative to the audio.
 
 ## Requirements
@@ -14,14 +14,19 @@ Visualize the Fast Fourier Transform (FFT) of audio signals in real-time using C
 
 Arch Linux:
 ```bash
-sudo pacman -S clang raylib fftw
+sudo pacman -S clang raylib fftw portaudio
 ```
 
 ## Build and run
 ```bash
 chmod +x build.sh
 ./build.sh
+
+# Audio file
 ./build/c_fft_visualizer <path_to_audio_file> <--loop (optional)>
+
+# Live microphone
+./build/c_fft_visualizer --mic
 ```
 
 ## Features
@@ -30,6 +35,7 @@ chmod +x build.sh
 - Per-band peak-hold with timed decay
 - Pink compensation (pink-flat display)
 - dB grid overlay and peak/RMS meters
+- Use a live microphone with the flag: --mic
 
 ## Controls
 - O: Change octave scaling (1/1…1/48)
