@@ -4,6 +4,11 @@
 #include <raylib.h>
 #include <portaudio.h>
 
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_STANDARD_BOOL
+#define NK_IMPLEMENTATION
+#include "nuclear.h"
+
 #include "redefines.h"
 #include "spectrum.h"
 #include "render.h"
@@ -34,6 +39,9 @@ typedef struct
     volatile ul mic_ring_write;      // producer index (callback)
     volatile ul mic_ring_read;       // consumer index (main thread)
     f32 mic_window[FFT_WINDOW_SIZE]; // sliding window buffer for FFT
+
+    struct nk_context nk;
+    i32 show_settings; // 1 = show modal
 } app_state_t;
 
 void app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_flag, i32 *mic_mode);

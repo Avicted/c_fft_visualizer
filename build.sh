@@ -6,7 +6,7 @@ set -xe
 mkdir -p ./build
 
 CC=clang
-CFLAGS="-std=c99 -O3 -march=native -Wall -Wextra -Werror"
+CFLAGS="-std=c99 -O3 -march=native -Wall -Wextra -Werror -Wno-unused-function"
 LDLIBS="-lm -lraylib -lfftw3 -lportaudio -lpthread"
 
 SRC_FILES=(

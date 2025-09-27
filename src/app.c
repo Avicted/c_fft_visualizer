@@ -271,7 +271,7 @@ audio_callback(
     for (ul i = 0; i < frames; i++)
     {
         f32 sum = 0.0f;
-        for (int c = 0; c < INPUT_NUM_CHANNELS; c++)
+        for (i32 c = 0; c < INPUT_NUM_CHANNELS; c++)
         {
             sum += in[i * INPUT_NUM_CHANNELS + c];
         }
@@ -295,7 +295,7 @@ i32 app_init_audio_capture(app_state_t *app_state)
         return 1;
     }
 
-    int num_devices = Pa_GetDeviceCount();
+    i32 num_devices = Pa_GetDeviceCount();
     if (num_devices < 0)
     {
         fprintf(stderr, "ERROR: Pa_GetDeviceCount returned 0x%x\n", num_devices);
@@ -304,7 +304,7 @@ i32 app_init_audio_capture(app_state_t *app_state)
 
     printf("Available audio devices:\n");
     const PaDeviceInfo *device_info;
-    for (int i = 0; i < num_devices; i++)
+    for (i32 i = 0; i < num_devices; i++)
     {
         device_info = Pa_GetDeviceInfo(i);
         printf("  Device %d: %s\n", i, device_info->name);
@@ -364,6 +364,199 @@ i32 app_init_audio_capture(app_state_t *app_state)
     return 0;
 }
 
+// Nuklear <-> Raylib minimal binding ---------------------------------------------
+internal f32
+nk_raylib_text_width(nk_handle handle, f32 h, const char *text, int len)
+{
+    if (!text || len <= 0)
+    {
+        return 0.0f;
+    }
+
+    Font *font = (Font *)handle.ptr;
+
+    // Nuklear passes non-null-terminated strings
+    char buf[512];
+    if (len >= (int)sizeof(buf))
+    {
+        len = (int)sizeof(buf) - 1;
+    }
+
+    memcpy(buf, text, (size_t)len);
+    buf[len] = '\0';
+    Vector2 sz = MeasureTextEx(*font, buf, h, 0.0f);
+    return sz.x;
+}
+
+internal Color
+nk_to_ray(const struct nk_color c)
+{
+    return (Color){c.r, c.g, c.b, c.a};
+}
+
+internal void
+nk_raylib_render(struct nk_context *ctx, Font *font)
+{
+    const struct nk_command *cmd;
+    i32 scissor_active = 0;
+
+    nk_foreach(cmd, ctx)
+    {
+        switch (cmd->type)
+        {
+        case NK_COMMAND_SCISSOR:
+        {
+            const struct nk_command_scissor *s = (const struct nk_command_scissor *)cmd;
+            if (scissor_active)
+            {
+                EndScissorMode();
+                scissor_active = 0;
+            }
+
+            BeginScissorMode((int)s->x, (int)s->y, (int)s->w, (int)s->h);
+            scissor_active = 1;
+        }
+        break;
+        case NK_COMMAND_RECT:
+        {
+            const struct nk_command_rect *r = (const struct nk_command_rect *)cmd;
+            DrawRectangleLinesEx((Rectangle){(f64)r->x, (f64)r->y, (f64)r->w, (f64)r->h}, (f64)r->line_thickness, nk_to_ray(r->color));
+        }
+        break;
+        case NK_COMMAND_RECT_FILLED:
+        {
+            const struct nk_command_rect_filled *r = (const struct nk_command_rect_filled *)cmd;
+            DrawRectangleRec((Rectangle){(f64)r->x, (f64)r->y, (f64)r->w, (f64)r->h}, nk_to_ray(r->color));
+        }
+        break;
+        case NK_COMMAND_TEXT:
+        {
+            const struct nk_command_text *t = (const struct nk_command_text *)cmd;
+
+            // Nuklear text is not null-terminated
+            char buf[1024];
+            i32 n = t->length;
+            if (n >= (int)sizeof(buf))
+            {
+                n = (int)sizeof(buf) - 1;
+            }
+
+            memcpy(buf, t->string, (size_t)n);
+            buf[n] = '\0';
+            DrawTextEx(*font, buf, (Vector2){(f64)t->x, (f64)t->y}, t->height, 0, nk_to_ray(t->foreground));
+        }
+        break;
+        case NK_COMMAND_LINE:
+        {
+            const struct nk_command_line *l = (const struct nk_command_line *)cmd;
+            DrawLineEx((Vector2){(f64)l->begin.x, (f64)l->begin.y},
+                       (Vector2){(f64)l->end.x, (f64)l->end.y},
+                       (f64)l->line_thickness, nk_to_ray(l->color));
+        }
+        break;
+        default:
+            break;
+        }
+    }
+
+    if (scissor_active)
+    {
+        EndScissorMode();
+    }
+
+    nk_clear(ctx);
+}
+
+internal void
+app_gui_init(app_state_t *app)
+{
+    // Bind Nuklear to our Raylib font via width callback
+    local_persist struct nk_user_font nk_font;
+    nk_font.userdata.ptr = &app->main_font;
+    nk_font.height = 22.0f;
+    nk_font.width = nk_raylib_text_width;
+
+    nk_init_default(&app->nk, &nk_font);
+    app->show_settings = 0;
+}
+
+internal void
+app_gui_shutdown(app_state_t *app)
+{
+    nk_free(&app->nk);
+    memset(&app->nk, 0, sizeof(app->nk));
+}
+
+internal void
+app_gui_frame(app_state_t *app)
+{
+    struct nk_context *ctx = &app->nk;
+
+    // Input
+    nk_input_begin(ctx);
+    Vector2 mp = GetMousePosition();
+    nk_input_motion(ctx, (int)mp.x, (int)mp.y);
+    i32 lmb = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+    nk_input_button(ctx, NK_BUTTON_LEFT, (int)mp.x, (int)mp.y, lmb);
+    f64 scroll = GetMouseWheelMove();
+    if (scroll != 0.0f)
+    {
+        nk_input_scroll(ctx, (struct nk_vec2){0, scroll});
+    }
+    nk_input_end(ctx);
+
+    // UI
+    const i32 sw = GetScreenWidth();
+    const i32 sh = GetScreenHeight();
+
+    // Top-right small window with a Settings button
+    const f64 tb_w = 120.0f, tb_h = 44.0f;
+    const f64 tb_x = (f64)sw - tb_w - 16.0f;
+    const f64 tb_y = 12.0f;
+    if (nk_begin(ctx, "TopBar", nk_rect(tb_x, tb_y, tb_w, tb_h),
+                 NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER))
+    {
+        nk_layout_row_dynamic(ctx, tb_h - 12.0f, 1);
+        if (nk_button_label(ctx, "Settings"))
+        {
+            app->show_settings = 1;
+        }
+    }
+    nk_end(ctx);
+
+    if (app->show_settings)
+    {
+        const f64 mw = 520.0f, mh = 320.0f;
+        const f64 mx = (sw - mw) * 0.5f;
+        const f64 my = (sh - mh) * 0.5f;
+
+        i32 open = nk_begin_titled(ctx, "SettingsModal", "Settings",
+                                   nk_rect(mx, my, mw, mh),
+                                   NK_WINDOW_MOVABLE | NK_WINDOW_BORDER |
+                                       NK_WINDOW_TITLE | NK_WINDOW_CLOSABLE);
+        if (open)
+        {
+            nk_layout_row_dynamic(ctx, 28.0f, 1);
+            nk_label(ctx, "Audio Input Device Selected:", NK_TEXT_LEFT);
+
+            nk_layout_row_dynamic(ctx, 36.0f, 1);
+            if (nk_button_label(ctx, "Close"))
+            {
+                app->show_settings = 0;
+            }
+        }
+        else
+        {
+            app->show_settings = 0;
+        }
+        nk_end(ctx);
+    }
+
+    nk_raylib_render(ctx, &app->main_font);
+}
+
+// end Nuklear <-> Raylib minimal binding ---------------------------------------------
+
 i32 app_platform_init(app_state_t *app_state)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
@@ -372,7 +565,7 @@ i32 app_platform_init(app_state_t *app_state)
     SetTargetFPS(60);
     SetWindowIcon(LoadImage("assets/icon.png"));
 
-    app_state->main_font = LoadFontEx("assets/fonts/Roboto_Mono/RobotoMono-Regular.ttf", 120, 0, 250);
+    app_state->main_font = LoadFontEx("assets/fonts/Roboto_Mono/RobotoMono-Regular.ttf", 64, 0, 256);
     app_state->windowed_w = WINDOW_WIDTH;
     app_state->windowed_h = WINDOW_HEIGHT;
     app_state->fractional_octave_index_selected = 4; // Default to 1/24 octave
@@ -383,6 +576,8 @@ i32 app_platform_init(app_state_t *app_state)
         fprintf(stderr, "ERROR: Failed to initialize audio capture\n");
         return 1;
     }
+
+    app_gui_init(app_state);
 
     return 0;
 }
@@ -528,6 +723,9 @@ void app_run(app_state_t *app_state)
         BeginDrawing();
         ClearBackground(BLACK);
         render_draw(&app_state->spectrum_state);
+
+        app_gui_frame(app_state);
+
         EndDrawing();
     }
 
@@ -570,6 +768,9 @@ void app_cleanup(app_state_t *app_state)
         free(app_state->mic_ring);
         app_state->mic_ring = NULL;
     }
+
+    // Shutdown GUI
+    app_gui_shutdown(app_state);
 
     spectrum_destroy(&app_state->spectrum_state);
     CloseAudioDevice();
