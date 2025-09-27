@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/c_fft_visualizer",
             "args": [
-                "pink_noise.wav",
+                "ängel.wav",
                 "--loop"
             ],
             "stopAtEntry": false,

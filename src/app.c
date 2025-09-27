@@ -1,20 +1,62 @@
 #include "app.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+internal void
+print_usage(const char *prog)
+{
+    fprintf(stderr,
+            "Usage: %s <wav-file> [options]\n"
+            "Options:\n"
+            "  -h, --help       Show this help and exit\n"
+            "  -l, --loop       Loop playback\n"
+            "\n"
+            "Controls: O Octave, C Colors, P Pink, A Avg, F Fast/Slow, H Hold, F11 Fullscreen\n",
+            prog);
+}
 
 void app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_flag)
 {
     *input_file = NULL;
     *loop_flag = 0;
 
+    if (argc <= 1)
+    {
+        print_usage(argv[0]);
+        exit(0);
+    }
+
     for (i32 i = 1; i < argc; i++)
     {
-        if (strcmp(argv[i], "--loop") == 0 || strcmp(argv[i], "-l") == 0)
+        const char *arg = argv[i];
+
+        if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0)
+        {
+            print_usage(argv[0]);
+            exit(0);
+        }
+        else if (strcmp(arg, "--loop") == 0 || strcmp(arg, "-l") == 0)
         {
             *loop_flag = 1;
         }
-        else if (!*input_file)
+        else if (arg[0] != '-' && !*input_file)
         {
             *input_file = argv[i];
         }
+        else
+        {
+            fprintf(stderr, "Unknown argument: %s\n\n", arg);
+            print_usage(argv[0]);
+            exit(1);
+        }
+    }
+
+    if (!*input_file)
+    {
+        fprintf(stderr, "Error: missing input WAV file.\n\n");
+        print_usage(argv[0]);
+        exit(1);
     }
 }
 
