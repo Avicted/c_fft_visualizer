@@ -25,7 +25,7 @@ typedef struct
     Color top;
 } bar_gradient_t;
 
-typedef struct spectrum_state_t
+typedef struct
 {
     i32 bar_gradient_index;
     bar_gradient_t bar_gradients[NUM_BAR_GRADIENTS];

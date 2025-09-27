@@ -12,7 +12,14 @@ print_usage(const char *prog)
             "  -h, --help       Show this help and exit\n"
             "  -l, --loop       Loop playback\n"
             "\n"
-            "Controls: O Octave, C Colors, P Pink, A Avg, F Fast/Slow, H Hold, F11 Fullscreen\n",
+            "Controls:\n"
+            "  O   Octave (1/1…1/48)\n"
+            "  C   Colors\n"
+            "  P   Pink compensation\n"
+            "  A   dB averaging\n"
+            "  F   Fast/Slow preset\n"
+            "  H   Peak-hold\n"
+            "  F11 Fullscreen\n",
             prog);
 }
 
@@ -135,6 +142,10 @@ void app_handle_input(app_state_t *app_state)
             s->db_smooth_attack_ms = 10.0;
             s->db_smooth_release_ms = 1200.0;
         }
+
+        TraceLog(LOG_INFO, "Averaging preset: %s (attack %.0f ms, release %.0f ms)",
+                 fast ? "Fast" : "Slow",
+                 s->db_smooth_attack_ms, s->db_smooth_release_ms);
     }
 
     if (IsKeyPressed(KEY_H))

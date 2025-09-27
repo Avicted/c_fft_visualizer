@@ -124,9 +124,14 @@ draw_overlay(const spectrum_state_t *s)
         snprintf(hold_buf, sizeof(hold_buf), "%.1fs", s->peak_hold_seconds);
     }
 
+    // Show averaging mode with attack/release in ms
+    const char *avg_label = s->db_smoothing_enabled ? "dB" : "Lin";
+    f64 attack_ms = s->db_smoothing_enabled ? s->db_smooth_attack_ms : s->smooth_attack_ms;
+    f64 release_ms = s->db_smoothing_enabled ? s->db_smooth_release_ms : s->smooth_release_ms;
+
     snprintf(modes, sizeof(modes),
-             "Avg: %s  | Pink: %s | Hold: %s",
-             s->db_smoothing_enabled ? "dB" : "Lin",
+             "Avg: %s (%.0f/%.0f ms) | Pink: %s | Hold: %s",
+             avg_label, attack_ms, release_ms,
              s->pinking_enabled ? "On" : "Off",
              hold_buf);
 

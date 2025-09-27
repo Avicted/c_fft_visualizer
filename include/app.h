@@ -7,7 +7,7 @@
 #include "spectrum.h"
 #include "render.h"
 
-typedef struct app_state_t
+typedef struct
 {
     i32 running;
     i32 windowed_w;
