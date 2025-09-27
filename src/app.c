@@ -478,6 +478,11 @@ void app_run(app_state_t *app_state)
             {
                 ul need = (ul)FFT_WINDOW_SIZE;
                 ul got = mic_ring_pop(app_state, app_state->mic_window, need);
+                if (got < need)
+                {
+                    memset(app_state->mic_window + got, 0, (need - got) * sizeof(f32));
+                }
+
                 mic_initialized = 1;
             }
 
