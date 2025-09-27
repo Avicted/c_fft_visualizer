@@ -100,5 +100,6 @@ i32 spectrum_done(const spectrum_state_t *s);
 void spectrum_handle_resize(spectrum_state_t *s);
 void spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt);
 void spectrum_render_to_texture(spectrum_state_t *s);
+void spectrum_set_peak_hold_seconds(spectrum_state_t *s, f64 seconds);
 
 #endif

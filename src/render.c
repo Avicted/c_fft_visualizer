@@ -114,11 +114,21 @@ draw_overlay(const spectrum_state_t *s)
     DrawTextEx(s->font, info, (Vector2){80, 16}, 25, 0, WHITE);
 
     char modes[128];
+    char hold_buf[16];
+    if (s->peak_hold_seconds <= 0.0)
+    {
+        snprintf(hold_buf, sizeof(hold_buf), "Off");
+    }
+    else
+    {
+        snprintf(hold_buf, sizeof(hold_buf), "%.1fs", s->peak_hold_seconds);
+    }
+
     snprintf(modes, sizeof(modes),
              "Avg: %s  | Pink: %s | Hold: %s",
              s->db_smoothing_enabled ? "dB" : "Lin",
              s->pinking_enabled ? "On" : "Off",
-             (s->peak_hold_seconds > 0.0) ? "On" : "Off");
+             hold_buf);
 
     DrawTextEx(s->font, modes, (Vector2){80, 44}, 20, 0, (Color){200, 200, 200, 255});
 

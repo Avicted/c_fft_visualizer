@@ -81,7 +81,7 @@ void app_handle_input(app_state_t *app_state)
     if (IsKeyPressed(KEY_F))
     {
         spectrum_state_t *s = &app_state->spectrum_state;
-        static int fast = 0;
+        local_persist i32 fast = 0;
         fast ^= 1;
         if (fast)
         {
@@ -98,22 +98,26 @@ void app_handle_input(app_state_t *app_state)
     if (IsKeyPressed(KEY_H))
     {
         spectrum_state_t *s = &app_state->spectrum_state;
-        if (s->peak_hold_seconds <= 0.0)
+        f64 next = s->peak_hold_seconds;
+
+        if (next <= 0.0)
         {
-            s->peak_hold_seconds = 0.5;
+            next = 0.5;
         }
-        else if (s->peak_hold_seconds < 1.0)
+        else if (next < 1.0)
         {
-            s->peak_hold_seconds = 1.0;
+            next = 1.0;
         }
-        else if (s->peak_hold_seconds < 2.0)
+        else if (next < 2.0)
         {
-            s->peak_hold_seconds = 2.0;
+            next = 2.0;
         }
         else
         {
-            s->peak_hold_seconds = 0.0;
+            next = 0.0;
         }
+
+        spectrum_set_peak_hold_seconds(s, next);
     }
 }
 

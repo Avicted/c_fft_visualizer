@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/c_fft_visualizer",
             "args": [
-                "I felt like I should record this (8).wav",
+                "pink_noise.wav",
                 "--loop"
             ],
             "stopAtEntry": false,

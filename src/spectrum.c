@@ -679,3 +679,51 @@ void spectrum_render_to_texture(spectrum_state_t *s)
 
     EndTextureMode();
 }
+
+void spectrum_set_peak_hold_seconds(spectrum_state_t *s, f64 seconds)
+{
+    f64 old = s->peak_hold_seconds;
+    s->peak_hold_seconds = seconds;
+
+    if (seconds <= 0.0)
+    {
+        // Turned off: clear all timers so peaks start decaying now
+        for (i32 b = 0; b < s->num_bars; b++)
+        {
+            s->peak_hold_timer[b] = 0.0;
+        }
+
+        return;
+    }
+
+    if (old <= 0.0)
+    {
+        // Turned on: give all current peaks a fresh hold
+        for (i32 b = 0; b < s->num_bars; b++)
+        {
+            s->peak_hold_timer[b] = seconds;
+        }
+    }
+    else if (seconds < old)
+    {
+        // Shortened: clamp existing timers
+        for (i32 b = 0; b < s->num_bars; b++)
+        {
+            if (s->peak_hold_timer[b] > seconds)
+            {
+                s->peak_hold_timer[b] = seconds;
+            }
+        }
+    }
+    else
+    {
+        // Extended: raise timers up to the new duration
+        for (i32 b = 0; b < s->num_bars; b++)
+        {
+            if (s->peak_hold_timer[b] < seconds)
+            {
+                s->peak_hold_timer[b] = seconds;
+            }
+        }
+    }
+}
