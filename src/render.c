@@ -1,6 +1,12 @@
 #include <math.h>
 #include "render.h"
 
+internal f64
+power_to_db(f64 power)
+{
+    return 10.0 * log10(power + EPSILON_POWER) + DB_OFFSET;
+}
+
 internal i32
 freq_to_bar_index(const spectrum_state_t *s, f64 f)
 {
@@ -100,9 +106,9 @@ draw_freq_grid(const spectrum_state_t *s)
 }
 
 internal void
-draw_overlay(const spectrum_state_t *s)
+draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_locked_index, i32 cursor_hover_index)
 {
-    char info[128];
+    char info[192];
     i32 sr = s->sample_rate;
     i32 denom = (i32)(1.0 / s->fractional_octave);
     if (denom <= 0)
@@ -111,7 +117,6 @@ draw_overlay(const spectrum_state_t *s)
     }
 
     snprintf(info, sizeof(info), "Sample Rate: %d Hz | Fractional Oct. 1/%d", sr, denom);
-    DrawTextEx(s->font, info, (Vector2){80, 16}, 25, 0, WHITE);
 
     char modes[128];
     char hold_buf[16];
@@ -129,57 +134,214 @@ draw_overlay(const spectrum_state_t *s)
     f64 attack_ms = s->db_smoothing_enabled ? s->db_smooth_attack_ms : s->smooth_attack_ms;
     f64 release_ms = s->db_smoothing_enabled ? s->db_smooth_release_ms : s->smooth_release_ms;
 
+    const char *freq_w = "Z";
+    if (s->frequency_weighting_mode == FREQ_WEIGHTING_A)
+    {
+        freq_w = "A";
+    }
+    else if (s->frequency_weighting_mode == FREQ_WEIGHTING_C)
+    {
+        freq_w = "C";
+    }
+
+    const char *time_w = "Fast";
+    if (s->time_weighting_mode == TIME_WEIGHTING_SLOW)
+    {
+        time_w = "Slow";
+    }
+    else if (s->time_weighting_mode == TIME_WEIGHTING_IMPULSE)
+    {
+        time_w = "Impulse";
+    }
+
     snprintf(modes, sizeof(modes),
-             "Avg: %s (%.0f/%.0f ms) | Pink: %s | Hold: %s",
+             "Avg: %s (%.0f/%.0f ms) | Pink: %s | Hold: %s | W: %s | T: %s | Cal: %s",
              avg_label, attack_ms, release_ms,
              s->pinking_enabled ? "On" : "Off",
-             hold_buf);
+             hold_buf,
+             freq_w,
+             time_w,
+             s->spl_calibrated ? "On" : "Off");
 
-    DrawTextEx(s->font, modes, (Vector2){80, 44}, 20, 0, (Color){200, 200, 200, 255});
+    Vector2 info_size = MeasureTextEx(s->font, info, 20, 0);
+    Vector2 mode_size = MeasureTextEx(s->font, modes, 18, 0);
+    i32 panel_left = 72;
+    i32 panel_top = 12;
+    i32 panel_w = (i32)fmax(info_size.x, mode_size.x) + 24;
+    i32 panel_h = 58;
+    DrawRectangle(panel_left, panel_top, panel_w, panel_h, (Color){0, 0, 0, 155});
+    DrawRectangleLines(panel_left, panel_top, panel_w, panel_h, (Color){80, 80, 80, 200});
+    DrawTextEx(s->font, info, (Vector2){(f32)(panel_left + 12), (f32)(panel_top + 8)}, 20, 0, WHITE);
+    DrawTextEx(s->font, modes, (Vector2){(f32)(panel_left + 12), (f32)(panel_top + 30)}, 18, 0, (Color){210, 210, 210, 255});
 
-    char meters[96];
+    char meters[192];
     const char *peak_txt;
     const char *rms_txt;
-    char pkbuf[32], rmsbuf[32];
+    const char *peak_spl_txt;
+    const char *rms_spl_txt;
+    char pkbuf[32], rmsbuf[32], pksplbuf[32], rmssplbuf[32];
 
-    if (isnan(s->meter_peak_dbfs))
+    if (isnan(s->meter_peak_dbfs_display))
     {
         peak_txt = "--.-";
     }
-    else if (isinf(s->meter_peak_dbfs))
+    else if (isinf(s->meter_peak_dbfs_display))
     {
         snprintf(pkbuf, sizeof(pkbuf), "-inf");
         peak_txt = pkbuf;
     }
     else
     {
-        snprintf(pkbuf, sizeof(pkbuf), "%.1f", s->meter_peak_dbfs);
+        snprintf(pkbuf, sizeof(pkbuf), "%.1f", s->meter_peak_dbfs_display);
         peak_txt = pkbuf;
     }
 
-    if (isnan(s->meter_rms_dbfs))
+    if (isnan(s->meter_rms_dbfs_display))
     {
         rms_txt = "--.-";
     }
-    else if (isinf(s->meter_rms_dbfs))
+    else if (isinf(s->meter_rms_dbfs_display))
     {
         snprintf(rmsbuf, sizeof(rmsbuf), "-inf");
         rms_txt = rmsbuf;
     }
     else
     {
-        snprintf(rmsbuf, sizeof(rmsbuf), "%.1f", s->meter_rms_dbfs);
+        snprintf(rmsbuf, sizeof(rmsbuf), "%.1f", s->meter_rms_dbfs_display);
         rms_txt = rmsbuf;
     }
 
-    snprintf(meters, sizeof(meters), "Peak: %6s dBFS\nRMS:  %6s dBFS", peak_txt, rms_txt);
+    if (!s->spl_calibrated || isnan(s->meter_peak_dbspl_display))
+    {
+        peak_spl_txt = "--.-";
+    }
+    else if (isinf(s->meter_peak_dbspl_display))
+    {
+        snprintf(pksplbuf, sizeof(pksplbuf), "-inf");
+        peak_spl_txt = pksplbuf;
+    }
+    else
+    {
+        snprintf(pksplbuf, sizeof(pksplbuf), "%.1f", s->meter_peak_dbspl_display);
+        peak_spl_txt = pksplbuf;
+    }
 
-    Vector2 ts = MeasureTextEx(s->font, meters, 20, 0);
-    f32 x = (f32)(s->plot_left + s->plot_width - (i32)ts.x - 120);
-    DrawTextEx(s->font, meters, (Vector2){x, 16}, 32, 0, WHITE);
+    if (!s->spl_calibrated || isnan(s->meter_rms_dbspl_display))
+    {
+        rms_spl_txt = "--.-";
+    }
+    else if (isinf(s->meter_rms_dbspl_display))
+    {
+        snprintf(rmssplbuf, sizeof(rmssplbuf), "-inf");
+        rms_spl_txt = rmssplbuf;
+    }
+    else
+    {
+        snprintf(rmssplbuf, sizeof(rmssplbuf), "%.1f", s->meter_rms_dbspl_display);
+        rms_spl_txt = rmssplbuf;
+    }
+
+    snprintf(meters, sizeof(meters),
+             "Peak: %6s dBFS  %6s dBSPL\nRMS:  %6s dBFS  %6s dBSPL",
+             peak_txt, peak_spl_txt,
+             rms_txt, rms_spl_txt);
+
+    Vector2 meter_size = MeasureTextEx(s->font, meters, 20, 0);
+    i32 meter_panel_w = (i32)meter_size.x + 24;
+    i32 meter_panel_h = (i32)meter_size.y + 14;
+    i32 meter_panel_x = s->plot_left + s->plot_width - meter_panel_w - 12;
+    i32 meter_panel_y = 12;
+    DrawRectangle(meter_panel_x, meter_panel_y, meter_panel_w, meter_panel_h, (Color){0, 0, 0, 155});
+    DrawRectangleLines(meter_panel_x, meter_panel_y, meter_panel_w, meter_panel_h, (Color){80, 80, 80, 200});
+    DrawTextEx(s->font, meters, (Vector2){(f32)(meter_panel_x + 12), (f32)(meter_panel_y + 8)}, 20, 0, WHITE);
+
+    i32 active_index = -1;
+    if (cursor_lock_enabled && cursor_locked_index >= 0 && cursor_locked_index < s->num_bars)
+    {
+        active_index = cursor_locked_index;
+    }
+    else if (cursor_hover_index >= 0 && cursor_hover_index < s->num_bars)
+    {
+        active_index = cursor_hover_index;
+    }
+
+    if (active_index >= 0)
+    {
+        local_persist i32 cursor_display_index = -1;
+        local_persist f64 cursor_live_db_display = DB_BOTTOM;
+        local_persist f64 cursor_max_db_display = DB_BOTTOM;
+
+        f64 f = s->bar_freq_center[active_index];
+        f64 live_db_target = power_to_db(s->bar_smoothed[active_index]);
+        f64 max_db_target = power_to_db(s->max_hold_power[active_index]);
+        if (live_db_target < DB_BOTTOM)
+        {
+            live_db_target = DB_BOTTOM;
+        }
+        if (max_db_target < DB_BOTTOM)
+        {
+            max_db_target = DB_BOTTOM;
+        }
+
+        if (cursor_display_index != active_index)
+        {
+            cursor_live_db_display = live_db_target;
+            cursor_max_db_display = max_db_target;
+            cursor_display_index = active_index;
+        }
+        else
+        {
+            f64 dt = GetFrameTime();
+            f64 tau = CURSOR_READOUT_SMOOTH_MS * 0.001;
+            f64 alpha = (tau > 0.0) ? (1.0 - exp(-dt / tau)) : 1.0;
+            cursor_live_db_display += alpha * (live_db_target - cursor_live_db_display);
+            cursor_max_db_display += alpha * (max_db_target - cursor_max_db_display);
+        }
+
+        f64 live_db = cursor_live_db_display;
+        f64 max_db = cursor_max_db_display;
+        if (live_db < DB_BOTTOM)
+        {
+            live_db = DB_BOTTOM;
+        }
+        if (max_db < DB_BOTTOM)
+        {
+            max_db = DB_BOTTOM;
+        }
+
+        char fbuf[32];
+        if (f >= 1000.0)
+        {
+            snprintf(fbuf, sizeof(fbuf), "%.3fk", f / 1000.0);
+        }
+        else
+        {
+            snprintf(fbuf, sizeof(fbuf), "%.1f", f);
+        }
+
+        char cursor_info[192];
+        const char *mode = cursor_lock_enabled ? "LOCK" : "HOVER";
+        snprintf(cursor_info, sizeof(cursor_info),
+                 "%s  %s Hz  |  Live %5.1f dB  |  Max %5.1f dB",
+                 mode, fbuf, live_db, max_db);
+
+        Vector2 cursor_size = MeasureTextEx(s->font, cursor_info, 19, 0);
+        i32 cursor_panel_x = 72;
+        i32 cursor_panel_y = s->plot_top + s->plot_height - 42;
+        i32 cursor_panel_w = (i32)cursor_size.x + 22;
+        i32 cursor_panel_h = 32;
+        DrawRectangle(cursor_panel_x, cursor_panel_y, cursor_panel_w, cursor_panel_h, (Color){0, 0, 0, 155});
+        DrawRectangleLines(cursor_panel_x, cursor_panel_y, cursor_panel_w, cursor_panel_h, (Color){80, 80, 80, 200});
+        DrawTextEx(s->font, cursor_info, (Vector2){(f32)(cursor_panel_x + 11), (f32)(cursor_panel_y + 7)}, 19, 0, WHITE);
+
+        i32 stride = BAR_PIXEL_WIDTH + BAR_GAP;
+        i32 cx = s->plot_left + active_index * stride + BAR_PIXEL_WIDTH / 2;
+        Color cursor_line = cursor_lock_enabled ? (Color){255, 220, 80, 220} : (Color){255, 255, 255, 110};
+        DrawLine(cx, s->plot_top, cx, s->plot_top + s->plot_height, cursor_line);
+    }
 }
 
-void render_draw(const spectrum_state_t *s)
+void render_draw(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_locked_index, i32 cursor_hover_index)
 {
     draw_db_grid(s);
     draw_freq_grid(s);
@@ -189,5 +351,5 @@ void render_draw(const spectrum_state_t *s)
                    (Rectangle){(f32)s->plot_left, (f32)s->plot_top, (f32)s->plot_width, (f32)s->plot_height},
                    (Vector2){0, 0}, 0, WHITE);
 
-    draw_overlay(s);
+    draw_overlay(s, cursor_lock_enabled, cursor_locked_index, cursor_hover_index);
 }

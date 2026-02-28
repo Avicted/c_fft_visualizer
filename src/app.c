@@ -20,8 +20,131 @@ print_usage(const char *prog)
             "  A   dB averaging\n"
             "  F   Fast/Slow preset\n"
             "  H   Peak-hold\n"
+            "  W   Frequency weighting (Z/A/C)\n"
+            "  T   Time weighting (Fast/Slow/Impulse)\n"
+            "  K   Calibrate SPL to 94 dB\n"
+            "  G   Peak-find (max-hold)\n"
+            "  Left/Right  Step locked band\n"
+            "  Mouse Left  Toggle nearest-band lock\n"
+            "  R   Reset peaks/max-hold\n"
+            "  Space Freeze\n"
             "  F11 Fullscreen\n",
             prog, prog);
+}
+
+internal const char *
+freq_weight_label(i32 mode)
+{
+    if (mode == FREQ_WEIGHTING_A)
+    {
+        return "A";
+    }
+    if (mode == FREQ_WEIGHTING_C)
+    {
+        return "C";
+    }
+
+    return "Z";
+}
+
+internal const char *
+time_weight_label(i32 mode)
+{
+    if (mode == TIME_WEIGHTING_SLOW)
+    {
+        return "Slow";
+    }
+    if (mode == TIME_WEIGHTING_IMPULSE)
+    {
+        return "Impulse";
+    }
+
+    return "Fast";
+}
+
+internal i32
+clamp_bar_index(const spectrum_state_t *s, i32 index)
+{
+    if (s->num_bars <= 0)
+    {
+        return -1;
+    }
+
+    if (index < 0)
+    {
+        return 0;
+    }
+    if (index >= s->num_bars)
+    {
+        return s->num_bars - 1;
+    }
+
+    return index;
+}
+
+internal i32
+cursor_index_from_mouse(const spectrum_state_t *s)
+{
+    if (s->num_bars <= 0)
+    {
+        return -1;
+    }
+
+    Vector2 mouse = GetMousePosition();
+    i32 mx = (i32)mouse.x;
+    i32 my = (i32)mouse.y;
+    if (mx < s->plot_left || mx >= s->plot_left + s->plot_width ||
+        my < s->plot_top || my >= s->plot_top + s->plot_height)
+    {
+        return -1;
+    }
+
+    i32 stride = BAR_PIXEL_WIDTH + BAR_GAP;
+    i32 index = (mx - s->plot_left) / stride;
+    return clamp_bar_index(s, index);
+}
+
+internal void
+app_sync_cursor_indices(app_state_t *app_state)
+{
+    spectrum_state_t *s = &app_state->spectrum_state;
+    app_state->cursor_hover_index = cursor_index_from_mouse(s);
+
+    if (app_state->cursor_lock_enabled)
+    {
+        app_state->cursor_locked_index = clamp_bar_index(s, app_state->cursor_locked_index);
+        if (app_state->cursor_locked_index < 0)
+        {
+            app_state->cursor_lock_enabled = 0;
+        }
+    }
+}
+
+internal i32
+find_max_hold_peak_index(const spectrum_state_t *s)
+{
+    if (s->num_bars <= 0 || !s->max_hold_power)
+    {
+        return -1;
+    }
+
+    i32 best_index = 0;
+    f64 best_power = s->max_hold_power[0];
+    for (i32 i = 1; i < s->num_bars; i++)
+    {
+        if (s->max_hold_power[i] > best_power)
+        {
+            best_power = s->max_hold_power[i];
+            best_index = i;
+        }
+    }
+
+    if (best_power <= 0.0)
+    {
+        return -1;
+    }
+
+    return best_index;
 }
 
 void app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_flag, i32 *mic_mode)
@@ -94,6 +217,7 @@ void app_handle_input(app_state_t *app_state)
         }
 
         spectrum_handle_resize(&app_state->spectrum_state);
+        app_sync_cursor_indices(app_state);
     }
 
     if (IsKeyPressed(KEY_O))
@@ -110,6 +234,7 @@ void app_handle_input(app_state_t *app_state)
                                        app_state->fractional_octave_index_selected);
 
         spectrum_handle_resize(&app_state->spectrum_state);
+        app_sync_cursor_indices(app_state);
     }
 
     if (IsKeyPressed(KEY_C))
@@ -178,26 +303,138 @@ void app_handle_input(app_state_t *app_state)
 
         spectrum_set_peak_hold_seconds(s, next);
     }
+
+    if (IsKeyPressed(KEY_W))
+    {
+        spectrum_state_t *s = &app_state->spectrum_state;
+        spectrum_cycle_frequency_weighting(s);
+        TraceLog(LOG_INFO, "Frequency weighting: %s", freq_weight_label(s->frequency_weighting_mode));
+    }
+
+    if (IsKeyPressed(KEY_T))
+    {
+        spectrum_state_t *s = &app_state->spectrum_state;
+        spectrum_cycle_time_weighting(s);
+        TraceLog(LOG_INFO, "Time weighting: %s", time_weight_label(s->time_weighting_mode));
+    }
+
+    if (IsKeyPressed(KEY_K))
+    {
+        spectrum_state_t *s = &app_state->spectrum_state;
+        spectrum_calibrate_spl(s, s->calibrator_target_db_spl);
+
+        if (s->spl_calibrated)
+        {
+            TraceLog(LOG_INFO, "SPL calibrated: target %.1f dB SPL, offset %+.1f dB", s->calibrator_target_db_spl, s->spl_offset_db);
+        }
+        else
+        {
+            TraceLog(LOG_WARNING, "SPL calibration skipped: no valid RMS reading yet");
+        }
+    }
+
+    if (IsKeyPressed(KEY_R))
+    {
+        spectrum_reset_peaks(&app_state->spectrum_state);
+    }
+
+    if (IsKeyPressed(KEY_G))
+    {
+        i32 peak_index = find_max_hold_peak_index(&app_state->spectrum_state);
+        if (peak_index >= 0)
+        {
+            app_state->cursor_lock_enabled = 1;
+            app_state->cursor_locked_index = peak_index;
+        }
+    }
+
+    if (app_state->cursor_lock_enabled)
+    {
+        if (IsKeyPressed(KEY_LEFT))
+        {
+            app_state->cursor_locked_index = clamp_bar_index(&app_state->spectrum_state, app_state->cursor_locked_index - 1);
+        }
+
+        if (IsKeyPressed(KEY_RIGHT))
+        {
+            app_state->cursor_locked_index = clamp_bar_index(&app_state->spectrum_state, app_state->cursor_locked_index + 1);
+        }
+    }
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    {
+        i32 index = app_state->cursor_hover_index;
+        if (index >= 0)
+        {
+            if (app_state->cursor_lock_enabled && app_state->cursor_locked_index == index)
+            {
+                app_state->cursor_lock_enabled = 0;
+            }
+            else
+            {
+                app_state->cursor_lock_enabled = 1;
+                app_state->cursor_locked_index = index;
+            }
+        }
+    }
+
+    if (IsKeyPressed(KEY_SPACE))
+    {
+        app_state->freeze_enabled ^= 1;
+        if (app_state->freeze_enabled)
+        {
+            SetWindowTitle("FFT Visualizer [FROZEN]");
+        }
+        else
+        {
+            SetWindowTitle("FFT Visualizer");
+        }
+    }
+
+    app_sync_cursor_indices(app_state);
 }
 
 internal inline ul
-mic_ring_count(const app_state_t *app)
+mic_ring_count_unlocked(const app_state_t *app)
 {
     return app->mic_ring_write - app->mic_ring_read;
 }
 
 internal inline ul
-mic_ring_space(const app_state_t *app)
+mic_ring_space_unlocked(const app_state_t *app)
 {
-    return app->mic_ring_capacity - mic_ring_count(app);
+    return app->mic_ring_capacity - mic_ring_count_unlocked(app);
+}
+
+internal ul
+mic_ring_count(app_state_t *app)
+{
+    ul count;
+    if (!app->mic_ring_mutex_initialized)
+    {
+        return 0;
+    }
+
+    pthread_mutex_lock(&app->mic_ring_mutex);
+    count = mic_ring_count_unlocked(app);
+    pthread_mutex_unlock(&app->mic_ring_mutex);
+    return count;
 }
 
 internal ul
 mic_ring_push(app_state_t *app, const f32 *src, ul n)
 {
-    ul space = mic_ring_space(app);
+    if (!app->mic_ring_mutex_initialized)
+    {
+        return 0;
+    }
+
+    pthread_mutex_lock(&app->mic_ring_mutex);
+
+    ul space = mic_ring_space_unlocked(app);
     if (n > space)
     {
+        app->mic_ring_dropped_frames += (n - space);
         n = space; // drop overflow
     }
 
@@ -209,13 +446,21 @@ mic_ring_push(app_state_t *app, const f32 *src, ul n)
     }
 
     app->mic_ring_write = w + n;
+    pthread_mutex_unlock(&app->mic_ring_mutex);
     return n;
 }
 
 internal ul
 mic_ring_pop(app_state_t *app, f32 *dst, ul n)
 {
-    ul avail = mic_ring_count(app);
+    if (!app->mic_ring_mutex_initialized)
+    {
+        return 0;
+    }
+
+    pthread_mutex_lock(&app->mic_ring_mutex);
+
+    ul avail = mic_ring_count_unlocked(app);
     if (n > avail)
     {
         n = avail;
@@ -229,7 +474,24 @@ mic_ring_pop(app_state_t *app, f32 *dst, ul n)
     }
 
     app->mic_ring_read = r + n;
+    pthread_mutex_unlock(&app->mic_ring_mutex);
     return n;
+}
+
+internal ul
+mic_ring_discard_all(app_state_t *app)
+{
+    ul dropped = 0;
+    if (!app->mic_ring_mutex_initialized)
+    {
+        return 0;
+    }
+
+    pthread_mutex_lock(&app->mic_ring_mutex);
+    dropped = mic_ring_count_unlocked(app);
+    app->mic_ring_read = app->mic_ring_write;
+    pthread_mutex_unlock(&app->mic_ring_mutex);
+    return dropped;
 }
 
 internal i32
@@ -286,6 +548,11 @@ audio_callback(
 
 i32 app_init_audio_capture(app_state_t *app_state)
 {
+    if (app_state->selected_device_stream)
+    {
+        return 0;
+    }
+
     PaError err;
     err = Pa_Initialize();
 
@@ -312,6 +579,12 @@ i32 app_init_audio_capture(app_state_t *app_state)
 
     // Allow selecting device via environment variable PA_DEVICE_INDEX, otherwise use default input
     i32 selected_device_index = Pa_GetDefaultInputDevice();
+    if (selected_device_index == paNoDevice)
+    {
+        fprintf(stderr, "ERROR: No default input audio device available\n");
+        return 1;
+    }
+
     const char *env = getenv("PA_DEVICE_INDEX");
     if (env)
     {
@@ -331,11 +604,17 @@ i32 app_init_audio_capture(app_state_t *app_state)
     in_params.suggestedLatency = app_state->selected_device_info->defaultLowInputLatency;
     in_params.hostApiSpecificStreamInfo = NULL;
 
+    f64 requested_sample_rate = app_state->selected_device_info->defaultSampleRate;
+    if (requested_sample_rate <= 0.0)
+    {
+        requested_sample_rate = (f64)INPUT_SAMPLE_RATE;
+    }
+
     err = Pa_OpenStream(
         &app_state->selected_device_stream,
         &in_params,
         NULL,
-        (f64)INPUT_SAMPLE_RATE,
+        requested_sample_rate,
         (ul)INPUT_FRAMES_PER_BUFFER,
         paClipOff,
         audio_callback,
@@ -347,11 +626,40 @@ i32 app_init_audio_capture(app_state_t *app_state)
         return 1;
     }
 
+    const PaStreamInfo *stream_info = Pa_GetStreamInfo(app_state->selected_device_stream);
+    if (stream_info && stream_info->sampleRate > 0.0)
+    {
+        app_state->input_sample_rate = stream_info->sampleRate;
+    }
+    else
+    {
+        app_state->input_sample_rate = (f64)INPUT_SAMPLE_RATE;
+    }
+
+    if (pthread_mutex_init(&app_state->mic_ring_mutex, NULL) != 0)
+    {
+        fprintf(stderr, "ERROR: Failed to initialize mic ring mutex\n");
+        return 1;
+    }
+    app_state->mic_ring_mutex_initialized = 1;
+
     // Allocate ~2 seconds of ring buffer for mic capture
-    app_state->mic_ring_capacity = (ul)(INPUT_SAMPLE_RATE * 2);
+    app_state->mic_ring_capacity = (ul)(app_state->input_sample_rate * 2.0);
+    if (app_state->mic_ring_capacity < (ul)(FFT_WINDOW_SIZE * 2))
+    {
+        app_state->mic_ring_capacity = (ul)(FFT_WINDOW_SIZE * 2);
+    }
+
     app_state->mic_ring = (f32 *)calloc(app_state->mic_ring_capacity, sizeof(f32));
+    if (!app_state->mic_ring)
+    {
+        fprintf(stderr, "ERROR: Failed to allocate mic ring buffer\n");
+        return 1;
+    }
+
     app_state->mic_ring_write = 0;
     app_state->mic_ring_read = 0;
+    app_state->mic_ring_dropped_frames = 0;
     memset(app_state->mic_window, 0, sizeof(app_state->mic_window));
 
     err = Pa_StartStream(app_state->selected_device_stream);
@@ -375,14 +683,12 @@ i32 app_platform_init(app_state_t *app_state)
     app_state->main_font = LoadFontEx("assets/fonts/Roboto_Mono/RobotoMono-Regular.ttf", 120, 0, 250);
     app_state->windowed_w = WINDOW_WIDTH;
     app_state->windowed_h = WINDOW_HEIGHT;
+    app_state->cursor_lock_enabled = 0;
+    app_state->cursor_locked_index = -1;
+    app_state->cursor_hover_index = -1;
+    app_state->input_sample_rate = (f64)INPUT_SAMPLE_RATE;
     app_state->fractional_octave_index_selected = 4; // Default to 1/24 octave
-    TraceLog(LOG_INFO, "Keys: O=Frac octave, P=Pink comp, A=dB avg, F=Avg preset, H=Peak hold");
-
-    if (app_init_audio_capture(app_state) != 0)
-    {
-        fprintf(stderr, "ERROR: Failed to initialize audio capture\n");
-        return 1;
-    }
+    TraceLog(LOG_INFO, "Keys: O=Frac octave, P=Pink comp, A=dB avg, F=Avg preset, H=Peak hold, W=Weighting, T=Time weighting, K=Calibrate, G=Peak-find, Arrows=Step lock, Click=Toggle lock, R=Reset peaks/max-hold, Space=Freeze");
 
     return 0;
 }
@@ -432,10 +738,14 @@ void app_run(app_state_t *app_state)
         app_handle_input(app_state);
 
         spectrum_handle_resize(&app_state->spectrum_state);
+        app_sync_cursor_indices(app_state);
 
         if (!app_state->mic_mode)
         {
-            spectrum_update(&app_state->spectrum_state, &app_state->wave, app_state->samples, frame_dt);
+            if (!app_state->freeze_enabled)
+            {
+                spectrum_update(&app_state->spectrum_state, &app_state->wave, app_state->samples, frame_dt);
+            }
             spectrum_render_to_texture(&app_state->spectrum_state);
 
             if (!app_state->loop_flag && spectrum_done(&app_state->spectrum_state))
@@ -456,6 +766,21 @@ void app_run(app_state_t *app_state)
         {
             spectrum_state_t *s = &app_state->spectrum_state;
 
+            if (app_state->freeze_enabled)
+            {
+                mic_ring_discard_all(app_state);
+                spectrum_render_to_texture(&app_state->spectrum_state);
+
+                BeginDrawing();
+                ClearBackground(BLACK);
+                render_draw(&app_state->spectrum_state,
+                            app_state->cursor_lock_enabled,
+                            app_state->cursor_locked_index,
+                            app_state->cursor_hover_index);
+                EndDrawing();
+                continue;
+            }
+
             ul avail = mic_ring_count(app_state);
             i32 hop = s->hop_size;
             ul max_windows_this_frame = avail / (ul)hop;
@@ -468,7 +793,7 @@ void app_run(app_state_t *app_state)
 
             Wave live_wave;
             live_wave.channels = 1;
-            live_wave.sampleRate = INPUT_SAMPLE_RATE;
+            live_wave.sampleRate = (i32)app_state->input_sample_rate;
             live_wave.frameCount = FFT_WINDOW_SIZE;
             live_wave.data = NULL; // not used
 
@@ -480,7 +805,9 @@ void app_run(app_state_t *app_state)
                 ul got = mic_ring_pop(app_state, app_state->mic_window, need);
                 if (got < need)
                 {
-                    memset(app_state->mic_window + got, 0, (need - got) * sizeof(f32));
+                    ul pad = need - got;
+                    memmove(app_state->mic_window + pad, app_state->mic_window, got * sizeof(f32));
+                    memset(app_state->mic_window, 0, pad * sizeof(f32));
                 }
 
                 mic_initialized = 1;
@@ -527,7 +854,10 @@ void app_run(app_state_t *app_state)
 
         BeginDrawing();
         ClearBackground(BLACK);
-        render_draw(&app_state->spectrum_state);
+        render_draw(&app_state->spectrum_state,
+                    app_state->cursor_lock_enabled,
+                    app_state->cursor_locked_index,
+                    app_state->cursor_hover_index);
         EndDrawing();
     }
 
@@ -563,6 +893,13 @@ void app_cleanup(app_state_t *app_state)
         Pa_CloseStream(app_state->selected_device_stream);
         app_state->selected_device_stream = NULL;
     }
+
+    if (app_state->mic_ring_mutex_initialized)
+    {
+        pthread_mutex_destroy(&app_state->mic_ring_mutex);
+        app_state->mic_ring_mutex_initialized = 0;
+    }
+
     Pa_Terminate();
 
     if (app_state->mic_ring)

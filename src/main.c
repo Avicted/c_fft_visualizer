@@ -52,9 +52,16 @@ i32 main(i32 argc, char **argv)
     }
     else
     {
+        if (app_init_audio_capture(app_state) != 0)
+        {
+            fprintf(stderr, "ERROR: Failed to initialize audio capture\n");
+            app_cleanup(app_state);
+            return 1;
+        }
+
         Wave live_wave = {0};
         live_wave.channels = 1;
-        live_wave.sampleRate = INPUT_SAMPLE_RATE;
+        live_wave.sampleRate = (i32)app_state->input_sample_rate;
         live_wave.frameCount = FFT_WINDOW_SIZE;
         spectrum_init(&app_state->spectrum_state, &live_wave, app_state->main_font);
 
@@ -63,13 +70,6 @@ i32 main(i32 argc, char **argv)
         spectrum_set_fractional_octave(&app_state->spectrum_state, frac, index);
 
         spectrum_set_total_windows(&app_state->spectrum_state, 1);
-
-        if (app_init_audio_capture(app_state) != 0)
-        {
-            fprintf(stderr, "ERROR: Failed to initialize audio capture\n");
-            app_cleanup(app_state);
-            return 1;
-        }
     }
 
     app_run(app_state);

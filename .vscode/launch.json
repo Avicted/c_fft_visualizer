@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/c_fft_visualizer",
             "args": [
-                "GLBTM.wav",
+                "/home/avic/Music/03. GLBTM (Studio Outtakes).ogg",
                 "--loop"
                 // "--mic"
             ],

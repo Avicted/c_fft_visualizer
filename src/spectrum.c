@@ -4,11 +4,128 @@
 #include "spectrum.h"
 
 internal void compute_bar_targets(spectrum_state_t *s);
+internal void update_meter_time_weighting_coeffs(spectrum_state_t *s);
+internal void update_max_hold_trace(spectrum_state_t *s);
+
+internal f64
+frequency_weighting_db(i32 mode, f64 freq_hz)
+{
+    f64 f = (freq_hz > 1e-6) ? freq_hz : 1e-6;
+    f64 f2 = f * f;
+    f64 f4 = f2 * f2;
+    f64 c12200_2 = 12200.0 * 12200.0;
+
+    if (mode == FREQ_WEIGHTING_A)
+    {
+        f64 denom = (f2 + 20.6 * 20.6) *
+                    sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) *
+                    (f2 + c12200_2);
+        if (denom <= 0.0)
+        {
+            return 0.0;
+        }
+
+        f64 ra = (c12200_2 * f4) / denom;
+        if (ra <= 0.0)
+        {
+            return -INFINITY;
+        }
+
+        return 20.0 * log10(ra) + 2.0;
+    }
+
+    if (mode == FREQ_WEIGHTING_C)
+    {
+        f64 denom = (f2 + 20.6 * 20.6) * (f2 + c12200_2);
+        if (denom <= 0.0)
+        {
+            return 0.0;
+        }
+
+        f64 rc = (c12200_2 * f2) / denom;
+        if (rc <= 0.0)
+        {
+            return -INFINITY;
+        }
+
+        return 20.0 * log10(rc) + 0.06;
+    }
+
+    return 0.0; // Z weighting
+}
+
+internal f64
+frequency_weighting_power_factor(i32 mode, f64 freq_hz)
+{
+    f64 db = frequency_weighting_db(mode, freq_hz);
+    if (isinf(db) && db < 0.0)
+    {
+        return 0.0;
+    }
+
+    return pow(10.0, db / 10.0);
+}
+
+internal void
+update_meter_time_weighting_coeffs(spectrum_state_t *s)
+{
+    f64 fs = (f64)s->sample_rate;
+    if (fs <= 0.0)
+    {
+        fs = (f64)INPUT_SAMPLE_RATE;
+    }
+
+    f64 sample_dt = 1.0 / fs;
+
+    if (s->time_weighting_mode == TIME_WEIGHTING_FAST)
+    {
+        f64 tau = 0.125;
+        s->meter_tw_alpha_fastslow = 1.0 - exp(-sample_dt / tau);
+        s->meter_tw_alpha_attack = s->meter_tw_alpha_fastslow;
+        s->meter_tw_alpha_release = s->meter_tw_alpha_fastslow;
+    }
+    else if (s->time_weighting_mode == TIME_WEIGHTING_SLOW)
+    {
+        f64 tau = 1.0;
+        s->meter_tw_alpha_fastslow = 1.0 - exp(-sample_dt / tau);
+        s->meter_tw_alpha_attack = s->meter_tw_alpha_fastslow;
+        s->meter_tw_alpha_release = s->meter_tw_alpha_fastslow;
+    }
+    else
+    {
+        f64 tau_attack = 0.035;
+        f64 tau_release = 1.5;
+        s->meter_tw_alpha_fastslow = 0.0;
+        s->meter_tw_alpha_attack = 1.0 - exp(-sample_dt / tau_attack);
+        s->meter_tw_alpha_release = 1.0 - exp(-sample_dt / tau_release);
+    }
+}
 
 internal f64
 volume_to_db(f64 volume, f64 epsilon_power, f64 db_offset)
 {
     return 10.0 * log10(volume + epsilon_power) + db_offset;
+}
+
+internal f64
+smooth_readout_db(f64 prev, f64 target, f64 dt, f64 tau_ms)
+{
+    if (isnan(target))
+    {
+        return NAN;
+    }
+    if (isinf(target))
+    {
+        return target;
+    }
+    if (isnan(prev) || isinf(prev))
+    {
+        return target;
+    }
+
+    f64 tau = tau_ms * 0.001;
+    f64 alpha = (tau > 0.0) ? (1.0 - exp(-dt / tau)) : 1.0;
+    return prev + alpha * (target - prev);
 }
 
 internal f64
@@ -86,16 +203,18 @@ allocate_bars(spectrum_state_t *s, i32 num)
     s->bar_target = (f64 *)calloc(num, sizeof(f64));
     s->bar_smoothed = (f64 *)calloc(num, sizeof(f64));
     s->peak_power = (f64 *)calloc(num, sizeof(f64));
+    s->max_hold_power = (f64 *)calloc(num, sizeof(f64));
     s->bar_freq_center = (f64 *)calloc(num, sizeof(f64));
     s->peak_hold_timer = (f64 *)calloc(num, sizeof(f64));
-    if (!s->bar_target || !s->bar_smoothed || !s->peak_power || !s->bar_freq_center || !s->peak_hold_timer)
+    if (!s->bar_target || !s->bar_smoothed || !s->peak_power || !s->max_hold_power || !s->bar_freq_center || !s->peak_hold_timer)
     {
         free(s->bar_target);
         free(s->bar_smoothed);
         free(s->peak_power);
+        free(s->max_hold_power);
         free(s->bar_freq_center);
         free(s->peak_hold_timer);
-        s->bar_target = s->bar_smoothed = s->peak_power = s->bar_freq_center = s->peak_hold_timer = NULL;
+        s->bar_target = s->bar_smoothed = s->peak_power = s->max_hold_power = s->bar_freq_center = s->peak_hold_timer = NULL;
         return 0;
     }
 
@@ -115,9 +234,10 @@ free_bars(spectrum_state_t *s)
     free(s->bar_target);
     free(s->bar_smoothed);
     free(s->peak_power);
+    free(s->max_hold_power);
     free(s->bar_freq_center);
     free(s->peak_hold_timer);
-    s->bar_target = s->bar_smoothed = s->peak_power = s->bar_freq_center = s->peak_hold_timer = NULL;
+    s->bar_target = s->bar_smoothed = s->peak_power = s->max_hold_power = s->bar_freq_center = s->peak_hold_timer = NULL;
     s->num_bars = 0;
 }
 
@@ -137,13 +257,15 @@ reallocate_bars_if_needed(spectrum_state_t *s)
     f64 *new_target = (f64 *)calloc(new_num, sizeof(f64));
     f64 *new_smoothed = (f64 *)calloc(new_num, sizeof(f64));
     f64 *new_peak = (f64 *)calloc(new_num, sizeof(f64));
+    f64 *new_max_hold = (f64 *)calloc(new_num, sizeof(f64));
     f64 *new_freq_center = (f64 *)calloc(new_num, sizeof(f64));
     f64 *new_peak_hold = (f64 *)calloc(new_num, sizeof(f64));
-    if (!new_target || !new_smoothed || !new_peak || !new_freq_center || !new_peak_hold)
+    if (!new_target || !new_smoothed || !new_peak || !new_max_hold || !new_freq_center || !new_peak_hold)
     {
         free(new_target);
         free(new_smoothed);
         free(new_peak);
+        free(new_max_hold);
         free(new_freq_center);
         free(new_peak_hold);
         return 0;
@@ -174,6 +296,7 @@ reallocate_bars_if_needed(spectrum_state_t *s)
             new_target[i] = s->bar_target[closest_index];
             new_smoothed[i] = s->bar_smoothed[closest_index];
             new_peak[i] = s->peak_power[closest_index];
+            new_max_hold[i] = s->max_hold_power[closest_index];
             new_peak_hold[i] = s->peak_hold_timer[closest_index];
         }
     }
@@ -182,6 +305,7 @@ reallocate_bars_if_needed(spectrum_state_t *s)
     s->bar_target = new_target;
     s->bar_smoothed = new_smoothed;
     s->peak_power = new_peak;
+    s->max_hold_power = new_max_hold;
     s->bar_freq_center = new_freq_center;
     s->peak_hold_timer = new_peak_hold;
     s->num_bars = new_num;
@@ -235,6 +359,13 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     s->meter_sample_count = 0;
     s->meter_rms_dbfs = NAN;
     s->meter_peak_dbfs = NAN;
+    s->meter_rms_dbspl = NAN;
+    s->meter_peak_dbspl = NAN;
+    s->meter_rms_dbfs_display = NAN;
+    s->meter_peak_dbfs_display = NAN;
+    s->meter_rms_dbspl_display = NAN;
+    s->meter_peak_dbspl_display = NAN;
+    s->meter_readout_smooth_ms = METER_READOUT_SMOOTH_MS;
 
     s->pinking_enabled = 1;
     s->db_smoothing_enabled = 1;
@@ -243,6 +374,19 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     s->db_smooth_attack_ms = DB_SMOOTH_ATTACK_MS;
     s->db_smooth_release_ms = DB_SMOOTH_RELEASE_MS;
     s->peak_hold_seconds = PEAK_HOLD_SEC;
+
+    s->frequency_weighting_mode = FREQ_WEIGHTING_Z;
+    s->time_weighting_mode = TIME_WEIGHTING_FAST;
+    s->spl_offset_db = DEFAULT_SPL_OFFSET_DB;
+    s->calibrator_target_db_spl = DEFAULT_CALIBRATOR_TARGET_DB_SPL;
+    s->spl_calibrated = 0;
+
+    s->meter_rms_sq_tw = 0.0;
+    s->meter_peak_lin_tw = 0.0;
+    s->meter_tw_alpha_fastslow = 0.0;
+    s->meter_tw_alpha_attack = 0.0;
+    s->meter_tw_alpha_release = 0.0;
+    update_meter_time_weighting_coeffs(s);
 }
 
 void spectrum_destroy(spectrum_state_t *s)
@@ -328,14 +472,33 @@ compute_fft_window(spectrum_state_t *s, f32 *samples, Wave *wave)
         mono_buf[i] = mono;
         mean += mono;
 
-        // Meter accumulation (raw mono sample before mean removal / HPF / window)
+        // Meter time-weighting (raw mono sample before mean removal / HPF / window)
         f64 absx = fabs((f64)mono);
-        if (absx > s->meter_peak_lin)
+        f64 x2 = (f64)mono * (f64)mono;
+
+        if (s->time_weighting_mode == TIME_WEIGHTING_IMPULSE)
         {
-            s->meter_peak_lin = absx;
+            f64 a_rms = (x2 > s->meter_rms_sq_tw) ? s->meter_tw_alpha_attack : s->meter_tw_alpha_release;
+            f64 a_peak = (absx > s->meter_peak_lin_tw) ? s->meter_tw_alpha_attack : s->meter_tw_alpha_release;
+            s->meter_rms_sq_tw += a_rms * (x2 - s->meter_rms_sq_tw);
+            s->meter_peak_lin_tw += a_peak * (absx - s->meter_peak_lin_tw);
+        }
+        else
+        {
+            f64 a = s->meter_tw_alpha_fastslow;
+            s->meter_rms_sq_tw += a * (x2 - s->meter_rms_sq_tw);
+            s->meter_peak_lin_tw += a * (absx - s->meter_peak_lin_tw);
         }
 
-        s->meter_sum_sq += (f64)mono * (f64)mono;
+        if (s->meter_rms_sq_tw < 0.0)
+        {
+            s->meter_rms_sq_tw = 0.0;
+        }
+        if (s->meter_peak_lin_tw < 0.0)
+        {
+            s->meter_peak_lin_tw = 0.0;
+        }
+
         s->meter_sample_count++;
     }
     mean /= (f64)FFT_WINDOW_SIZE;
@@ -467,14 +630,15 @@ compute_bar_targets(spectrum_state_t *s)
         }
 
         f64 avg_power = (width > 0.0) ? (sum / width) : 0.0;
+        f64 weighted_power = avg_power * frequency_weighting_power_factor(s->frequency_weighting_mode, f_center);
 
         if (s->pinking_enabled)
         {
-            s->bar_target[b] = avg_power * (f_center / 1000.0);
+            s->bar_target[b] = weighted_power * (f_center / 1000.0);
         }
         else
         {
-            s->bar_target[b] = avg_power;
+            s->bar_target[b] = weighted_power;
         }
     }
 }
@@ -547,6 +711,18 @@ update_peaks(spectrum_state_t *s, f64 dt)
     }
 }
 
+internal void
+update_max_hold_trace(spectrum_state_t *s)
+{
+    for (i32 b = 0; b < s->num_bars; b++)
+    {
+        if (s->bar_smoothed[b] > s->max_hold_power[b])
+        {
+            s->max_hold_power[b] = s->bar_smoothed[b];
+        }
+    }
+}
+
 void spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt)
 {
     if (spectrum_done(s))
@@ -563,42 +739,42 @@ void spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt)
         s->window_index++;
     }
 
-    const f64 meter_update_interval_seconds = 1.0;
-    s->meter_interval_elapsed += dt;
-    if (s->meter_interval_elapsed >= meter_update_interval_seconds)
+    if (s->meter_sample_count > 0)
     {
-        if (s->meter_sample_count > 0)
+        f64 rms_lin = sqrt(s->meter_rms_sq_tw);
+        if (s->meter_peak_lin_tw < 1e-12)
         {
-            f64 rms_lin = sqrt(s->meter_sum_sq / (f64)s->meter_sample_count);
-            if (s->meter_peak_lin < 1e-12)
-            {
-                s->meter_peak_dbfs = -INFINITY;
-            }
-            else
-            {
-                s->meter_peak_dbfs = 20.0 * log10(s->meter_peak_lin);
-            }
-
-            if (rms_lin < 1e-12)
-            {
-                s->meter_rms_dbfs = -INFINITY;
-            }
-            else
-            {
-                s->meter_rms_dbfs = 20.0 * log10(rms_lin);
-            }
+            s->meter_peak_dbfs = -INFINITY;
         }
         else
         {
-            s->meter_peak_dbfs = s->meter_rms_dbfs = NAN;
+            s->meter_peak_dbfs = 20.0 * log10(s->meter_peak_lin_tw);
         }
 
-        // reset accumulators, keep spill remainder
-        s->meter_interval_elapsed = fmod(s->meter_interval_elapsed, 1.0);
-        s->meter_sum_sq = 0.0;
-        s->meter_peak_lin = 0.0;
-        s->meter_sample_count = 0;
+        if (rms_lin < 1e-12)
+        {
+            s->meter_rms_dbfs = -INFINITY;
+        }
+        else
+        {
+            s->meter_rms_dbfs = 20.0 * log10(rms_lin);
+        }
+
+        s->meter_peak_dbspl = s->meter_peak_dbfs + s->spl_offset_db;
+        s->meter_rms_dbspl = s->meter_rms_dbfs + s->spl_offset_db;
     }
+    else
+    {
+        s->meter_peak_dbfs = s->meter_rms_dbfs = NAN;
+        s->meter_peak_dbspl = s->meter_rms_dbspl = NAN;
+    }
+
+    s->meter_peak_dbfs_display = smooth_readout_db(s->meter_peak_dbfs_display, s->meter_peak_dbfs, dt, s->meter_readout_smooth_ms);
+    s->meter_rms_dbfs_display = smooth_readout_db(s->meter_rms_dbfs_display, s->meter_rms_dbfs, dt, s->meter_readout_smooth_ms);
+    s->meter_peak_dbspl_display = smooth_readout_db(s->meter_peak_dbspl_display, s->meter_peak_dbspl, dt, s->meter_readout_smooth_ms);
+    s->meter_rms_dbspl_display = smooth_readout_db(s->meter_rms_dbspl_display, s->meter_rms_dbspl, dt, s->meter_readout_smooth_ms);
+
+    s->meter_sample_count = 0;
 
     if (s->db_smoothing_enabled)
     {
@@ -610,6 +786,7 @@ void spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt)
     }
 
     update_peaks(s, dt);
+    update_max_hold_trace(s);
 }
 
 void spectrum_render_to_texture(spectrum_state_t *s)
@@ -653,6 +830,8 @@ void spectrum_render_to_texture(spectrum_state_t *s)
         s->bar_gradients[s->bar_gradient_index].top.b,
         200};
 
+    Color max_hold_color = (Color){255, 255, 255, 180};
+
     for (i32 b = 0; b < s->num_bars; b++)
     {
         f64 peak_power = s->peak_power[b];
@@ -675,6 +854,27 @@ void spectrum_render_to_texture(spectrum_state_t *s)
         i32 y = h - (i32)(norm * h);
         i32 x = b * stride;
         DrawRectangle(x, y, BAR_PIXEL_WIDTH, 1, peak_color);
+    }
+
+    for (i32 b = 0; b < s->num_bars; b++)
+    {
+        i32 x = b * stride;
+        f64 max_hold_power = s->max_hold_power[b];
+        if (max_hold_power > 0.0)
+        {
+            f64 max_hold_db = volume_to_db(max_hold_power, EPSILON_POWER, DB_OFFSET);
+            if (max_hold_db >= DB_BOTTOM)
+            {
+                if (max_hold_db > DB_TOP)
+                {
+                    max_hold_db = DB_TOP;
+                }
+
+                f64 max_norm = (f64)(max_hold_db - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
+                i32 max_y = h - (i32)(max_norm * h);
+                DrawRectangle(x, max_y, BAR_PIXEL_WIDTH, 1, max_hold_color);
+            }
+        }
     }
 
     EndTextureMode();
@@ -726,4 +926,39 @@ void spectrum_set_peak_hold_seconds(spectrum_state_t *s, f64 seconds)
             }
         }
     }
+}
+
+void spectrum_reset_peaks(spectrum_state_t *s)
+{
+    for (i32 b = 0; b < s->num_bars; b++)
+    {
+        s->peak_power[b] = 0.0;
+        s->max_hold_power[b] = 0.0;
+        s->peak_hold_timer[b] = 0.0;
+    }
+}
+
+void spectrum_cycle_frequency_weighting(spectrum_state_t *s)
+{
+    s->frequency_weighting_mode = (s->frequency_weighting_mode + 1) % NUM_FREQ_WEIGHTING_MODES;
+}
+
+void spectrum_cycle_time_weighting(spectrum_state_t *s)
+{
+    s->time_weighting_mode = (s->time_weighting_mode + 1) % NUM_TIME_WEIGHTING_MODES;
+    update_meter_time_weighting_coeffs(s);
+}
+
+void spectrum_calibrate_spl(spectrum_state_t *s, f64 target_db_spl)
+{
+    if (isnan(s->meter_rms_dbfs) || isinf(s->meter_rms_dbfs))
+    {
+        return;
+    }
+
+    s->calibrator_target_db_spl = target_db_spl;
+    s->spl_offset_db = target_db_spl - s->meter_rms_dbfs;
+    s->spl_calibrated = 1;
+    s->meter_peak_dbspl = s->meter_peak_dbfs + s->spl_offset_db;
+    s->meter_rms_dbspl = s->meter_rms_dbfs + s->spl_offset_db;
 }

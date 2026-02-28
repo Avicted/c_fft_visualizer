@@ -17,6 +17,16 @@
 #define NUM_FRACTIONAL_OCTAVES 6
 #define NUM_BAR_GRADIENTS 3
 
+#define FREQ_WEIGHTING_Z 0
+#define FREQ_WEIGHTING_A 1
+#define FREQ_WEIGHTING_C 2
+#define NUM_FREQ_WEIGHTING_MODES 3
+
+#define TIME_WEIGHTING_FAST 0
+#define TIME_WEIGHTING_SLOW 1
+#define TIME_WEIGHTING_IMPULSE 2
+#define NUM_TIME_WEIGHTING_MODES 3
+
 extern const f64 FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES];
 
 typedef struct
@@ -41,6 +51,7 @@ typedef struct
     f64 *bar_target;
     f64 *bar_smoothed;
     f64 *peak_power;
+    f64 *max_hold_power;
     f64 *bar_freq_center;
 
     f64 *peak_hold_timer;
@@ -88,6 +99,25 @@ typedef struct
     i32 meter_sample_count;
     f64 meter_rms_dbfs;
     f64 meter_peak_dbfs;
+    f64 meter_rms_dbspl;
+    f64 meter_peak_dbspl;
+    f64 meter_rms_dbfs_display;
+    f64 meter_peak_dbfs_display;
+    f64 meter_rms_dbspl_display;
+    f64 meter_peak_dbspl_display;
+    f64 meter_readout_smooth_ms;
+
+    i32 frequency_weighting_mode;
+    i32 time_weighting_mode;
+    f64 spl_offset_db;
+    f64 calibrator_target_db_spl;
+    i32 spl_calibrated;
+
+    f64 meter_rms_sq_tw;
+    f64 meter_peak_lin_tw;
+    f64 meter_tw_alpha_fastslow;
+    f64 meter_tw_alpha_attack;
+    f64 meter_tw_alpha_release;
 } spectrum_state_t;
 
 void spectrum_set_fractional_octave(spectrum_state_t *s, f64 frac, i32 index);
@@ -101,5 +131,9 @@ void spectrum_handle_resize(spectrum_state_t *s);
 void spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt);
 void spectrum_render_to_texture(spectrum_state_t *s);
 void spectrum_set_peak_hold_seconds(spectrum_state_t *s, f64 seconds);
+void spectrum_reset_peaks(spectrum_state_t *s);
+void spectrum_cycle_frequency_weighting(spectrum_state_t *s);
+void spectrum_cycle_time_weighting(spectrum_state_t *s);
+void spectrum_calibrate_spl(spectrum_state_t *s, f64 target_db_spl);
 
 #endif
