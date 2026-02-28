@@ -26,8 +26,9 @@ typedef struct
     spectrum_state_t spectrum_state;
 
     Wave wave;
-    Sound sound;
+    Music music;
     f32 *samples;
+    f64 playback_time_prev;
 
     PaDeviceInfo *selected_device_info;
     PaStream *selected_device_stream;

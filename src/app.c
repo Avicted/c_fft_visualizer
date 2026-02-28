@@ -675,6 +675,7 @@ i32 app_init_audio_capture(app_state_t *app_state)
 i32 app_platform_init(app_state_t *app_state)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
+    SetAudioStreamBufferSizeDefault(AUDIO_STREAM_BUFFER_SAMPLES);
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "FFT Visualizer");
     InitAudioDevice();
     SetTargetFPS(60);
@@ -703,10 +704,10 @@ i32 app_load_audio_data(app_state_t *app_state, const char *input_file)
         return 1;
     }
 
-    app_state->sound = LoadSound(input_file);
-    if (app_state->sound.frameCount == 0)
+    app_state->music = LoadMusicStream(input_file);
+    if (app_state->music.stream.buffer == NULL)
     {
-        fprintf(stderr, "Failed to load sound: %s\n", input_file);
+        fprintf(stderr, "Failed to load music stream: %s\n", input_file);
         app_cleanup(app_state);
         return 1;
     }
@@ -724,9 +725,21 @@ i32 app_load_audio_data(app_state_t *app_state, const char *input_file)
 
 void app_run(app_state_t *app_state)
 {
+    f64 playback_analysis_accum = 0.0;
+    f64 *interp_from_bar = NULL;
+    f64 *interp_to_bar = NULL;
+    f64 *interp_curr_bar = NULL;
+    f64 *interp_from_peak = NULL;
+    f64 *interp_to_peak = NULL;
+    f64 *interp_curr_peak = NULL;
+    i32 interp_bar_count = 0;
+    i32 interp_ready = 0;
+
     if (!app_state->mic_mode)
     {
-        PlaySound(app_state->sound);
+        app_state->music.looping = (app_state->loop_flag != 0);
+        PlayMusicStream(app_state->music);
+        app_state->playback_time_prev = 0.0;
     }
 
     app_state->running = true;
@@ -742,24 +755,157 @@ void app_run(app_state_t *app_state)
 
         if (!app_state->mic_mode)
         {
-            if (!app_state->freeze_enabled)
-            {
-                spectrum_update(&app_state->spectrum_state, &app_state->wave, app_state->samples, frame_dt);
-            }
-            spectrum_render_to_texture(&app_state->spectrum_state);
+            spectrum_state_t *s = &app_state->spectrum_state;
 
-            if (!app_state->loop_flag && spectrum_done(&app_state->spectrum_state))
+            UpdateMusicStream(app_state->music);
+
+            playback_analysis_accum += frame_dt;
+
+            f64 analysis_interval = 1.0 / PLAYBACK_ANALYSIS_FPS;
+            if (analysis_interval <= 0.0)
+            {
+                analysis_interval = 1.0 / 30.0;
+            }
+
+            i32 run_analysis_now = (playback_analysis_accum >= analysis_interval);
+            if (run_analysis_now)
+            {
+                while (playback_analysis_accum >= analysis_interval)
+                {
+                    playback_analysis_accum -= analysis_interval;
+                }
+            }
+
+            if (s->num_bars > 0 && s->num_bars != interp_bar_count)
+            {
+                i32 n = s->num_bars;
+                f64 *new_from_bar = (f64 *)calloc((size_t)n, sizeof(f64));
+                f64 *new_to_bar = (f64 *)calloc((size_t)n, sizeof(f64));
+                f64 *new_curr_bar = (f64 *)calloc((size_t)n, sizeof(f64));
+                f64 *new_from_peak = (f64 *)calloc((size_t)n, sizeof(f64));
+                f64 *new_to_peak = (f64 *)calloc((size_t)n, sizeof(f64));
+                f64 *new_curr_peak = (f64 *)calloc((size_t)n, sizeof(f64));
+
+                if (new_from_bar && new_to_bar && new_curr_bar &&
+                    new_from_peak && new_to_peak && new_curr_peak)
+                {
+                    free(interp_from_bar);
+                    free(interp_to_bar);
+                    free(interp_curr_bar);
+                    free(interp_from_peak);
+                    free(interp_to_peak);
+                    free(interp_curr_peak);
+
+                    interp_from_bar = new_from_bar;
+                    interp_to_bar = new_to_bar;
+                    interp_curr_bar = new_curr_bar;
+                    interp_from_peak = new_from_peak;
+                    interp_to_peak = new_to_peak;
+                    interp_curr_peak = new_curr_peak;
+                    interp_bar_count = n;
+
+                    for (i32 b = 0; b < n; b++)
+                    {
+                        f64 bar = s->bar_smoothed[b];
+                        f64 peak = s->peak_power[b];
+                        interp_from_bar[b] = bar;
+                        interp_to_bar[b] = bar;
+                        interp_curr_bar[b] = bar;
+                        interp_from_peak[b] = peak;
+                        interp_to_peak[b] = peak;
+                        interp_curr_peak[b] = peak;
+                    }
+
+                    interp_ready = 1;
+                }
+                else
+                {
+                    free(new_from_bar);
+                    free(new_to_bar);
+                    free(new_curr_bar);
+                    free(new_from_peak);
+                    free(new_to_peak);
+                    free(new_curr_peak);
+                }
+            }
+
+            if (!app_state->freeze_enabled && run_analysis_now)
+            {
+                f64 playback_time_now = GetMusicTimePlayed(app_state->music);
+                f64 playback_dt = playback_time_now - app_state->playback_time_prev;
+
+                if (playback_dt < 0.0)
+                {
+                    // Stream looped (or restarted): reset FFT playback cursor
+                    spectrum_set_total_windows(s, s->total_windows);
+                    playback_dt = playback_time_now;
+                }
+
+                if (playback_dt > 0.0)
+                {
+                    spectrum_update(s, &app_state->wave, app_state->samples, playback_dt);
+                }
+
+                if (interp_ready)
+                {
+                    for (i32 b = 0; b < s->num_bars; b++)
+                    {
+                        interp_from_bar[b] = interp_curr_bar[b];
+                        interp_to_bar[b] = s->bar_smoothed[b];
+                        interp_from_peak[b] = interp_curr_peak[b];
+                        interp_to_peak[b] = s->peak_power[b];
+                    }
+                }
+
+                app_state->playback_time_prev = playback_time_now;
+            }
+            else if (app_state->freeze_enabled)
+            {
+                // If frozen, keep sync base current to avoid a large catch-up jump on unfreeze.
+                app_state->playback_time_prev = GetMusicTimePlayed(app_state->music);
+            }
+
+            UpdateMusicStream(app_state->music);
+
+            if (interp_ready && !app_state->freeze_enabled)
+            {
+                f64 alpha = playback_analysis_accum / analysis_interval;
+                if (alpha < 0.0)
+                {
+                    alpha = 0.0;
+                }
+                if (alpha > 1.0)
+                {
+                    alpha = 1.0;
+                }
+
+                for (i32 b = 0; b < s->num_bars; b++)
+                {
+                    interp_curr_bar[b] = interp_from_bar[b] + (interp_to_bar[b] - interp_from_bar[b]) * alpha;
+                    interp_curr_peak[b] = interp_from_peak[b] + (interp_to_peak[b] - interp_from_peak[b]) * alpha;
+                }
+
+                f64 *saved_bars = s->bar_smoothed;
+                f64 *saved_peaks = s->peak_power;
+                s->bar_smoothed = interp_curr_bar;
+                s->peak_power = interp_curr_peak;
+                spectrum_render_to_texture(s);
+                s->bar_smoothed = saved_bars;
+                s->peak_power = saved_peaks;
+            }
+            else
+            {
+                spectrum_render_to_texture(s);
+            }
+
+            if (!app_state->loop_flag && !IsMusicStreamPlaying(app_state->music))
             {
                 break;
             }
+
             if (app_state->loop_flag && spectrum_done(&app_state->spectrum_state))
             {
-                app_state->spectrum_state.window_index = 0;
-                app_state->spectrum_state.accumulator = 0.0;
-            }
-            if (app_state->loop_flag && !IsSoundPlaying(app_state->sound))
-            {
-                PlaySound(app_state->sound);
+                spectrum_set_total_windows(&app_state->spectrum_state, app_state->spectrum_state.total_windows);
             }
         }
         else
@@ -861,6 +1007,13 @@ void app_run(app_state_t *app_state)
         EndDrawing();
     }
 
+    free(interp_from_bar);
+    free(interp_to_bar);
+    free(interp_curr_bar);
+    free(interp_from_peak);
+    free(interp_to_peak);
+    free(interp_curr_peak);
+
     app_state->running = false;
 }
 
@@ -881,10 +1034,10 @@ void app_cleanup(app_state_t *app_state)
         UnloadWave(app_state->wave);
     }
 
-    if (app_state->sound.stream.buffer)
+    if (app_state->music.stream.buffer)
     {
-        StopSound(app_state->sound);
-        UnloadSound(app_state->sound);
+        StopMusicStream(app_state->music);
+        UnloadMusicStream(app_state->music);
     }
 
     if (app_state->selected_device_stream)

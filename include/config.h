@@ -39,4 +39,13 @@
 #define INPUT_FRAMES_PER_BUFFER 1024
 #define INPUT_NUM_CHANNELS 1
 
+// Audio output buffering (raylib/miniaudio). Larger buffers reduce underruns under debugger.
+#define AUDIO_STREAM_BUFFER_SAMPLES 16384
+
+// Playback-mode FFT budget per frame (limits CPU bursts that can starve audio updates).
+#define MAX_PLAYBACK_WINDOWS_PER_FRAME 1
+
+// Limit analyser updates in file-playback mode to reduce debugger-induced CPU spikes.
+#define PLAYBACK_ANALYSIS_FPS 15.0
+
 #endif
