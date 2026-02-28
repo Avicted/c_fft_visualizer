@@ -34,6 +34,7 @@ i32 main(i32 argc, char **argv)
         }
 
         spectrum_init(&app_state->spectrum_state, &app_state->wave, app_state->main_font);
+        app_state->spectrum_state.spl_features_enabled = 0;
         {
             i32 index = app_state->fractional_octave_index_selected;
             f64 frac = FRACTIONAL_OCTAVES[index];
@@ -64,6 +65,7 @@ i32 main(i32 argc, char **argv)
         live_wave.sampleRate = (i32)app_state->input_sample_rate;
         live_wave.frameCount = FFT_WINDOW_SIZE;
         spectrum_init(&app_state->spectrum_state, &live_wave, app_state->main_font);
+        app_state->spectrum_state.spl_features_enabled = 1;
 
         i32 index = app_state->fractional_octave_index_selected;
         f64 frac = FRACTIONAL_OCTAVES[index];

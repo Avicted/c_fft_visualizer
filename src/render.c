@@ -177,6 +177,16 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
         time_w = "Impulse";
     }
 
+    const char *cal_txt;
+    if (!s->spl_features_enabled)
+    {
+        cal_txt = "N/A";
+    }
+    else
+    {
+        cal_txt = s->spl_calibrated ? "On" : "Off";
+    }
+
     snprintf(modes, sizeof(modes),
              "Avg: %s (%.0f/%.0f ms) | Pink: %s | Hold: %s | W: %s | T: %s | Cal: %s",
              avg_label, attack_ms, release_ms,
@@ -184,7 +194,7 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
              hold_buf,
              freq_w,
              time_w,
-             s->spl_calibrated ? "On" : "Off");
+             cal_txt);
 
     Vector2 info_size = MeasureTextEx(s->font, info, info_text_size, 0);
     Vector2 mode_size = MeasureTextEx(s->font, modes, mode_text_size, 0);
@@ -234,7 +244,7 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
         rms_txt = rmsbuf;
     }
 
-    if (!s->spl_calibrated || isnan(s->meter_peak_dbspl_display))
+    if (!s->spl_features_enabled || !s->spl_calibrated || isnan(s->meter_peak_dbspl_display))
     {
         peak_spl_txt = "--.-";
     }
@@ -249,7 +259,7 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
         peak_spl_txt = pksplbuf;
     }
 
-    if (!s->spl_calibrated || isnan(s->meter_rms_dbspl_display))
+    if (!s->spl_features_enabled || !s->spl_calibrated || isnan(s->meter_rms_dbspl_display))
     {
         rms_spl_txt = "--.-";
     }
@@ -276,7 +286,8 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
     i32 meter_panel_y = ui_px(12);
     DrawRectangle(meter_panel_x, meter_panel_y, meter_panel_w, meter_panel_h, (Color){0, 0, 0, 155});
     DrawRectangleLines(meter_panel_x, meter_panel_y, meter_panel_w, meter_panel_h, (Color){80, 80, 80, 200});
-    DrawTextEx(s->font, meters, (Vector2){(f32)(meter_panel_x + ui_px(12)), (f32)(meter_panel_y + ui_px(8))}, meter_text_size, 0, WHITE);
+    Color meter_color = s->spl_features_enabled ? WHITE : (Color){170, 170, 170, 255};
+    DrawTextEx(s->font, meters, (Vector2){(f32)(meter_panel_x + ui_px(12)), (f32)(meter_panel_y + ui_px(8))}, meter_text_size, 0, meter_color);
 
     i32 active_index = -1;
     if (cursor_lock_enabled && cursor_locked_index >= 0 && cursor_locked_index < s->num_bars)
@@ -353,7 +364,7 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
         i32 cursor_panel_y = s->plot_top + s->plot_height - ui_px(42);
         i32 cursor_panel_w = (i32)cursor_size.x + ui_px(22);
         i32 cursor_panel_h = ui_px(32);
-        DrawRectangle(cursor_panel_x, cursor_panel_y, cursor_panel_w, cursor_panel_h, (Color){0, 0, 0, 155});
+        DrawRectangle(cursor_panel_x, cursor_panel_y, cursor_panel_w, cursor_panel_h, (Color){0, 0, 0, 242});
         DrawRectangleLines(cursor_panel_x, cursor_panel_y, cursor_panel_w, cursor_panel_h, (Color){80, 80, 80, 200});
         DrawTextEx(s->font, cursor_info, (Vector2){(f32)(cursor_panel_x + ui_px(11)), (f32)(cursor_panel_y + ui_px(7))}, cursor_text_size, 0, WHITE);
 
@@ -364,7 +375,7 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
     }
 }
 
-void render_draw(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_locked_index, i32 cursor_hover_index)
+void render_draw(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_locked_index, i32 cursor_hover_index, i32 show_paused_overlay)
 {
     draw_db_grid(s);
     draw_freq_grid(s);
@@ -375,4 +386,18 @@ void render_draw(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_
                    (Vector2){0, 0}, 0, WHITE);
 
     draw_overlay(s, cursor_lock_enabled, cursor_locked_index, cursor_hover_index);
+
+    if (show_paused_overlay)
+    {
+        i32 sw = GetScreenWidth();
+        i32 sh = GetScreenHeight();
+        DrawRectangle(0, 0, sw, sh, (Color){0, 0, 0, 128});
+
+        const char *paused_text = "Playback paused";
+        f32 paused_text_size = ui_text(40.0f);
+        Vector2 paused_text_dims = MeasureTextEx(s->font, paused_text, paused_text_size, 0);
+        Vector2 paused_text_pos = {(f32)((sw - (i32)paused_text_dims.x) / 2),
+                                   (f32)((sh - (i32)paused_text_dims.y) / 2)};
+        DrawTextEx(s->font, paused_text, paused_text_pos, paused_text_size, 0, WHITE);
+    }
 }

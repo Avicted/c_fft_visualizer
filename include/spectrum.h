@@ -15,7 +15,7 @@
 #define FRACTIONAL_OCTAVE_1_48 (1.0 / 48.0)
 
 #define NUM_FRACTIONAL_OCTAVES 6
-#define NUM_BAR_GRADIENTS 3
+#define NUM_BAR_GRADIENTS 7
 
 #define FREQ_WEIGHTING_Z 0
 #define FREQ_WEIGHTING_A 1
@@ -109,6 +109,7 @@ typedef struct
 
     i32 frequency_weighting_mode;
     i32 time_weighting_mode;
+    i32 spl_features_enabled;
     f64 spl_offset_db;
     f64 calibrator_target_db_spl;
     i32 spl_calibrated;

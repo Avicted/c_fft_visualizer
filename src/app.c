@@ -1,4 +1,5 @@
 #include "app.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -22,12 +23,12 @@ print_usage(const char *prog)
             "  H   Peak-hold\n"
             "  W   Frequency weighting (Z/A/C)\n"
             "  T   Time weighting (Fast/Slow/Impulse)\n"
-            "  K   Calibrate SPL to 94 dB\n"
+            "  K   Calibrate SPL to 94 dB (mic mode only)\n"
             "  G   Peak-find (max-hold)\n"
             "  Left/Right  Step locked band\n"
             "  Mouse Left  Toggle nearest-band lock\n"
             "  R   Reset peaks/max-hold\n"
-            "  Space Freeze\n"
+            "  Space Pause/Resume (file) or Freeze (mic)\n"
             "  F11 Fullscreen\n",
             prog, prog);
 }
@@ -321,15 +322,22 @@ void app_handle_input(app_state_t *app_state)
     if (IsKeyPressed(KEY_K))
     {
         spectrum_state_t *s = &app_state->spectrum_state;
-        spectrum_calibrate_spl(s, s->calibrator_target_db_spl);
-
-        if (s->spl_calibrated)
+        if (!s->spl_features_enabled)
         {
-            TraceLog(LOG_INFO, "SPL calibrated: target %.1f dB SPL, offset %+.1f dB", s->calibrator_target_db_spl, s->spl_offset_db);
+            TraceLog(LOG_INFO, "SPL calibration is disabled in file input mode");
         }
         else
         {
-            TraceLog(LOG_WARNING, "SPL calibration skipped: no valid RMS reading yet");
+            spectrum_calibrate_spl(s, s->calibrator_target_db_spl);
+
+            if (s->spl_calibrated)
+            {
+                TraceLog(LOG_INFO, "SPL calibrated: target %.1f dB SPL, offset %+.1f dB", s->calibrator_target_db_spl, s->spl_offset_db);
+            }
+            else
+            {
+                TraceLog(LOG_WARNING, "SPL calibration skipped: no valid RMS reading yet");
+            }
         }
     }
 
@@ -381,13 +389,30 @@ void app_handle_input(app_state_t *app_state)
     if (IsKeyPressed(KEY_SPACE))
     {
         app_state->freeze_enabled ^= 1;
-        if (app_state->freeze_enabled)
+
+        if (!app_state->mic_mode)
         {
-            SetWindowTitle("FFT Visualizer [FROZEN]");
+            if (app_state->freeze_enabled)
+            {
+                PauseMusicStream(app_state->music);
+                SetWindowTitle("FFT Visualizer [PAUSED]");
+            }
+            else
+            {
+                ResumeMusicStream(app_state->music);
+                SetWindowTitle("FFT Visualizer");
+            }
         }
         else
         {
-            SetWindowTitle("FFT Visualizer");
+            if (app_state->freeze_enabled)
+            {
+                SetWindowTitle("FFT Visualizer [FROZEN]");
+            }
+            else
+            {
+                SetWindowTitle("FFT Visualizer");
+            }
         }
     }
 
@@ -689,7 +714,7 @@ i32 app_platform_init(app_state_t *app_state)
     app_state->cursor_hover_index = -1;
     app_state->input_sample_rate = (f64)INPUT_SAMPLE_RATE;
     app_state->fractional_octave_index_selected = 4; // Default to 1/24 octave
-    TraceLog(LOG_INFO, "Keys: O=Frac octave, P=Pink comp, A=dB avg, F=Avg preset, H=Peak hold, W=Weighting, T=Time weighting, K=Calibrate, G=Peak-find, Arrows=Step lock, Click=Toggle lock, R=Reset peaks/max-hold, Space=Freeze");
+    TraceLog(LOG_INFO, "Keys: O=Frac octave, P=Pink comp, A=dB avg, F=Avg preset, H=Peak hold, W=Weighting, T=Time weighting, K=Calibrate, G=Peak-find, Arrows=Step lock, Click=Toggle lock, R=Reset peaks/max-hold, Space=Pause/Resume (file) or Freeze (mic)");
 
     return 0;
 }
@@ -757,7 +782,10 @@ void app_run(app_state_t *app_state)
         {
             spectrum_state_t *s = &app_state->spectrum_state;
 
-            UpdateMusicStream(app_state->music);
+            if (!app_state->freeze_enabled)
+            {
+                UpdateMusicStream(app_state->music);
+            }
 
             playback_analysis_accum += frame_dt;
 
@@ -865,7 +893,10 @@ void app_run(app_state_t *app_state)
                 app_state->playback_time_prev = GetMusicTimePlayed(app_state->music);
             }
 
-            UpdateMusicStream(app_state->music);
+            if (!app_state->freeze_enabled)
+            {
+                UpdateMusicStream(app_state->music);
+            }
 
             if (interp_ready && !app_state->freeze_enabled)
             {
@@ -898,7 +929,7 @@ void app_run(app_state_t *app_state)
                 spectrum_render_to_texture(s);
             }
 
-            if (!app_state->loop_flag && !IsMusicStreamPlaying(app_state->music))
+            if (!app_state->loop_flag && !app_state->freeze_enabled && !IsMusicStreamPlaying(app_state->music))
             {
                 break;
             }
@@ -922,7 +953,8 @@ void app_run(app_state_t *app_state)
                 render_draw(&app_state->spectrum_state,
                             app_state->cursor_lock_enabled,
                             app_state->cursor_locked_index,
-                            app_state->cursor_hover_index);
+                            app_state->cursor_hover_index,
+                            0);
                 EndDrawing();
                 continue;
             }
@@ -1003,7 +1035,8 @@ void app_run(app_state_t *app_state)
         render_draw(&app_state->spectrum_state,
                     app_state->cursor_lock_enabled,
                     app_state->cursor_locked_index,
-                    app_state->cursor_hover_index);
+                    app_state->cursor_hover_index,
+                    (!app_state->mic_mode && app_state->freeze_enabled));
         EndDrawing();
     }
 

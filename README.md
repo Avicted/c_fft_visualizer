@@ -51,7 +51,7 @@ chmod +x build.sh
 - H: Cycle peak-hold (Off, 0.5s, 1.0s, 2.0s)
 - W: Cycle frequency weighting (Z/A/C)
 - T: Cycle meter time weighting (Fast/Slow/Impulse)
-- K: Calibrate SPL to 94 dB reference
+- K: Calibrate SPL to 94 dB reference (mic mode only)
 - G: Peak-find from max-hold trace and lock cursor
 - Left/Right: Step locked band by one bar
 - Mouse Left: Toggle nearest-band lock

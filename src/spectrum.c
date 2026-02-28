@@ -319,6 +319,10 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     s->bar_gradients[0] = (bar_gradient_t){(Color){255, 128, 0, 255}, (Color){255, 255, 0, 255}};
     s->bar_gradients[1] = (bar_gradient_t){(Color){0, 32, 255, 255}, (Color){0, 255, 255, 255}};
     s->bar_gradients[2] = (bar_gradient_t){(Color){0, 255, 0, 255}, (Color){0, 255, 255, 255}};
+    s->bar_gradients[3] = (bar_gradient_t){(Color){255, 0, 128, 255}, (Color){255, 64, 255, 255}};
+    s->bar_gradients[4] = (bar_gradient_t){(Color){140, 0, 255, 255}, (Color){255, 0, 220, 255}};
+    s->bar_gradients[5] = (bar_gradient_t){(Color){0, 180, 255, 255}, (Color){140, 255, 0, 255}};
+    s->bar_gradients[6] = (bar_gradient_t){(Color){255, 40, 40, 255}, (Color){255, 180, 0, 255}};
     s->bar_gradient_index = 2;
 
     s->fft_bins = FFT_WINDOW_SIZE / 2 + 1;
@@ -377,6 +381,7 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
 
     s->frequency_weighting_mode = FREQ_WEIGHTING_Z;
     s->time_weighting_mode = TIME_WEIGHTING_FAST;
+    s->spl_features_enabled = 1;
     s->spl_offset_db = DEFAULT_SPL_OFFSET_DB;
     s->calibrator_target_db_spl = DEFAULT_CALIBRATOR_TARGET_DB_SPL;
     s->spl_calibrated = 0;
@@ -830,7 +835,7 @@ void spectrum_render_to_texture(spectrum_state_t *s)
         s->bar_gradients[s->bar_gradient_index].top.b,
         200};
 
-    Color max_hold_color = (Color){255, 255, 255, 180};
+    Color max_hold_color = (Color){255, 255, 255, 100};
 
     for (i32 b = 0; b < s->num_bars; b++)
     {
@@ -951,6 +956,11 @@ void spectrum_cycle_time_weighting(spectrum_state_t *s)
 
 void spectrum_calibrate_spl(spectrum_state_t *s, f64 target_db_spl)
 {
+    if (!s->spl_features_enabled)
+    {
+        return;
+    }
+
     if (isnan(s->meter_rms_dbfs) || isinf(s->meter_rms_dbfs))
     {
         return;
