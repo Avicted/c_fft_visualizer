@@ -3,10 +3,11 @@
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
-#define MARGIN_LEFT 60
-#define MARGIN_RIGHT 20
-#define MARGIN_TOP 64
-#define MARGIN_BOTTOM 48
+#define UI_SCALE 1.55
+#define MARGIN_LEFT 86
+#define MARGIN_RIGHT 28
+#define MARGIN_TOP 94
+#define MARGIN_BOTTOM 74
 #define GRID_COLOR (Color){40, 40, 40, 96}
 
 #define BAR_PIXEL_WIDTH 6

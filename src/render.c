@@ -7,6 +7,18 @@ power_to_db(f64 power)
     return 10.0 * log10(power + EPSILON_POWER) + DB_OFFSET;
 }
 
+internal f32
+ui_text(f32 base)
+{
+    return base * (f32)UI_SCALE;
+}
+
+internal i32
+ui_px(i32 base)
+{
+    return (i32)lround((f64)base * UI_SCALE);
+}
+
 internal i32
 freq_to_bar_index(const spectrum_state_t *s, f64 f)
 {
@@ -37,6 +49,9 @@ freq_to_bar_index(const spectrum_state_t *s, f64 f)
 internal void
 draw_db_grid(const spectrum_state_t *s)
 {
+    const f32 grid_label_size = ui_text(20.0f);
+    const i32 label_left_pad = ui_px(16);
+
     for (f64 db = DB_BOTTOM; db <= DB_TOP; db += 12.0)
     {
         f64 norm = (db - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
@@ -45,20 +60,23 @@ draw_db_grid(const spectrum_state_t *s)
 
         char label[16];
         snprintf(label, sizeof(label), "%.0f", db);
-        Vector2 ts = MeasureTextEx(s->font, label, 16, 0);
+        Vector2 ts = MeasureTextEx(s->font, label, grid_label_size, 0);
         i32 ly = y - (i32)(ts.y / 2);
         if (ly < 2)
         {
             ly = 2;
         }
 
-        DrawTextEx(s->font, label, (Vector2){(f32)(s->plot_left - (i32)ts.x - 16), (f32)ly}, 20, 0, WHITE);
+        DrawTextEx(s->font, label, (Vector2){(f32)(s->plot_left - (i32)ts.x - label_left_pad), (f32)ly}, grid_label_size, 0, WHITE);
     }
 }
 
 internal void
 draw_freq_grid(const spectrum_state_t *s)
 {
+    const f32 grid_label_size = ui_text(20.0f);
+    const i32 label_top_pad = ui_px(6);
+
     const f64 ticks[] = {20, 31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
     i32 last_x = -999999;
     for (i32 i = 0; i < (i32)(sizeof(ticks) / sizeof(ticks[0])); i++)
@@ -90,7 +108,7 @@ draw_freq_grid(const spectrum_state_t *s)
             snprintf(label, sizeof(label), "%.0f", f);
         }
 
-        Vector2 ts = MeasureTextEx(s->font, label, 16, 0);
+        Vector2 ts = MeasureTextEx(s->font, label, grid_label_size, 0);
         i32 lx = x - (i32)(ts.x / 2);
         if (lx < s->plot_left)
         {
@@ -101,13 +119,18 @@ draw_freq_grid(const spectrum_state_t *s)
             lx = s->plot_left + s->plot_width - (i32)ts.x;
         }
 
-        DrawTextEx(s->font, label, (Vector2){(f32)lx, (f32)(s->plot_top + s->plot_height + 6)}, 20, 0, WHITE);
+        DrawTextEx(s->font, label, (Vector2){(f32)lx, (f32)(s->plot_top + s->plot_height + label_top_pad)}, grid_label_size, 0, WHITE);
     }
 }
 
 internal void
 draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_locked_index, i32 cursor_hover_index)
 {
+    const f32 info_text_size = ui_text(20.0f);
+    const f32 mode_text_size = ui_text(18.0f);
+    const f32 meter_text_size = ui_text(20.0f);
+    const f32 cursor_text_size = ui_text(19.0f);
+
     char info[192];
     i32 sr = s->sample_rate;
     i32 denom = (i32)(1.0 / s->fractional_octave);
@@ -163,16 +186,16 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
              time_w,
              s->spl_calibrated ? "On" : "Off");
 
-    Vector2 info_size = MeasureTextEx(s->font, info, 20, 0);
-    Vector2 mode_size = MeasureTextEx(s->font, modes, 18, 0);
-    i32 panel_left = 72;
-    i32 panel_top = 12;
-    i32 panel_w = (i32)fmax(info_size.x, mode_size.x) + 24;
-    i32 panel_h = 58;
+    Vector2 info_size = MeasureTextEx(s->font, info, info_text_size, 0);
+    Vector2 mode_size = MeasureTextEx(s->font, modes, mode_text_size, 0);
+    i32 panel_left = ui_px(72);
+    i32 panel_top = ui_px(12);
+    i32 panel_w = (i32)fmax(info_size.x, mode_size.x) + ui_px(24);
+    i32 panel_h = ui_px(58);
     DrawRectangle(panel_left, panel_top, panel_w, panel_h, (Color){0, 0, 0, 155});
     DrawRectangleLines(panel_left, panel_top, panel_w, panel_h, (Color){80, 80, 80, 200});
-    DrawTextEx(s->font, info, (Vector2){(f32)(panel_left + 12), (f32)(panel_top + 8)}, 20, 0, WHITE);
-    DrawTextEx(s->font, modes, (Vector2){(f32)(panel_left + 12), (f32)(panel_top + 30)}, 18, 0, (Color){210, 210, 210, 255});
+    DrawTextEx(s->font, info, (Vector2){(f32)(panel_left + ui_px(12)), (f32)(panel_top + ui_px(8))}, info_text_size, 0, WHITE);
+    DrawTextEx(s->font, modes, (Vector2){(f32)(panel_left + ui_px(12)), (f32)(panel_top + ui_px(30))}, mode_text_size, 0, (Color){210, 210, 210, 255});
 
     char meters[192];
     const char *peak_txt;
@@ -246,14 +269,14 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
              peak_txt, peak_spl_txt,
              rms_txt, rms_spl_txt);
 
-    Vector2 meter_size = MeasureTextEx(s->font, meters, 20, 0);
-    i32 meter_panel_w = (i32)meter_size.x + 24;
-    i32 meter_panel_h = (i32)meter_size.y + 14;
-    i32 meter_panel_x = s->plot_left + s->plot_width - meter_panel_w - 12;
-    i32 meter_panel_y = 12;
+    Vector2 meter_size = MeasureTextEx(s->font, meters, meter_text_size, 0);
+    i32 meter_panel_w = (i32)meter_size.x + ui_px(24);
+    i32 meter_panel_h = (i32)meter_size.y + ui_px(14);
+    i32 meter_panel_x = s->plot_left + s->plot_width - meter_panel_w - ui_px(12);
+    i32 meter_panel_y = ui_px(12);
     DrawRectangle(meter_panel_x, meter_panel_y, meter_panel_w, meter_panel_h, (Color){0, 0, 0, 155});
     DrawRectangleLines(meter_panel_x, meter_panel_y, meter_panel_w, meter_panel_h, (Color){80, 80, 80, 200});
-    DrawTextEx(s->font, meters, (Vector2){(f32)(meter_panel_x + 12), (f32)(meter_panel_y + 8)}, 20, 0, WHITE);
+    DrawTextEx(s->font, meters, (Vector2){(f32)(meter_panel_x + ui_px(12)), (f32)(meter_panel_y + ui_px(8))}, meter_text_size, 0, WHITE);
 
     i32 active_index = -1;
     if (cursor_lock_enabled && cursor_locked_index >= 0 && cursor_locked_index < s->num_bars)
@@ -325,14 +348,14 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
                  "%s  %s Hz  |  Live %5.1f dB  |  Max %5.1f dB",
                  mode, fbuf, live_db, max_db);
 
-        Vector2 cursor_size = MeasureTextEx(s->font, cursor_info, 19, 0);
-        i32 cursor_panel_x = 72;
-        i32 cursor_panel_y = s->plot_top + s->plot_height - 42;
-        i32 cursor_panel_w = (i32)cursor_size.x + 22;
-        i32 cursor_panel_h = 32;
+        Vector2 cursor_size = MeasureTextEx(s->font, cursor_info, cursor_text_size, 0);
+        i32 cursor_panel_x = ui_px(72);
+        i32 cursor_panel_y = s->plot_top + s->plot_height - ui_px(42);
+        i32 cursor_panel_w = (i32)cursor_size.x + ui_px(22);
+        i32 cursor_panel_h = ui_px(32);
         DrawRectangle(cursor_panel_x, cursor_panel_y, cursor_panel_w, cursor_panel_h, (Color){0, 0, 0, 155});
         DrawRectangleLines(cursor_panel_x, cursor_panel_y, cursor_panel_w, cursor_panel_h, (Color){80, 80, 80, 200});
-        DrawTextEx(s->font, cursor_info, (Vector2){(f32)(cursor_panel_x + 11), (f32)(cursor_panel_y + 7)}, 19, 0, WHITE);
+        DrawTextEx(s->font, cursor_info, (Vector2){(f32)(cursor_panel_x + ui_px(11)), (f32)(cursor_panel_y + ui_px(7))}, cursor_text_size, 0, WHITE);
 
         i32 stride = BAR_PIXEL_WIDTH + BAR_GAP;
         i32 cx = s->plot_left + active_index * stride + BAR_PIXEL_WIDTH / 2;

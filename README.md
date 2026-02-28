@@ -64,6 +64,7 @@ Edit include/config.h to tune defaults
 
 - Default FFT settings are `FFT_WINDOW_SIZE=8192`, `FFT_HOP_SIZE=FFT_WINDOW_SIZE/16` for a professional RTA-style balance of low-end detail and low display latency.
 - Increase `FFT_WINDOW_SIZE` if you want even finer bass resolution, or decrease it for the fastest transient tracking.
+- Increase or decrease `UI_SCALE` to resize on-screen text/panels globally if the UI looks too small or too large on your display.
 
 ## Screenshot
 ![screenshot](assets/screenshot.png)
