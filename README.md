@@ -70,4 +70,4 @@ Edit include/config.h to tune defaults
 ![screenshot](assets/screenshot.png)
 
 ## License
-MIT License
+GPL-3.0 License
