@@ -12,6 +12,8 @@ Real-time FFT spectrum analyzer for audio files and live microphone input. Built
 - [FFTW3](http://www.fftw.org/)
 - [PortAudio](http://www.portaudio.com/)
 
+
+## Prerequisites
 **Arch Linux**
 
 ```
