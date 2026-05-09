@@ -7,24 +7,24 @@
 #include <fftw3.h>
 #include "config.h"
 
-#define FRACTIONAL_OCTAVE_1_1 1
-#define FRACTIONAL_OCTAVE_1_3 (1.0 / 3.0)
-#define FRACTIONAL_OCTAVE_1_6 (1.0 / 6.0)
+#define FRACTIONAL_OCTAVE_1_1  1
+#define FRACTIONAL_OCTAVE_1_3  (1.0 / 3.0)
+#define FRACTIONAL_OCTAVE_1_6  (1.0 / 6.0)
 #define FRACTIONAL_OCTAVE_1_12 (1.0 / 12.0)
 #define FRACTIONAL_OCTAVE_1_24 (1.0 / 24.0)
 #define FRACTIONAL_OCTAVE_1_48 (1.0 / 48.0)
 
 #define NUM_FRACTIONAL_OCTAVES 6
-#define NUM_BAR_GRADIENTS 7
+#define NUM_BAR_GRADIENTS      7
 
-#define FREQ_WEIGHTING_Z 0
-#define FREQ_WEIGHTING_A 1
-#define FREQ_WEIGHTING_C 2
+#define FREQ_WEIGHTING_Z         0
+#define FREQ_WEIGHTING_A         1
+#define FREQ_WEIGHTING_C         2
 #define NUM_FREQ_WEIGHTING_MODES 3
 
-#define TIME_WEIGHTING_FAST 0
-#define TIME_WEIGHTING_SLOW 1
-#define TIME_WEIGHTING_IMPULSE 2
+#define TIME_WEIGHTING_FAST      0
+#define TIME_WEIGHTING_SLOW      1
+#define TIME_WEIGHTING_IMPULSE   2
 #define NUM_TIME_WEIGHTING_MODES 3
 
 extern const f64 FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES];
@@ -121,20 +121,46 @@ typedef struct
     f64 meter_tw_alpha_release;
 } spectrum_state_t;
 
-void spectrum_set_fractional_octave(spectrum_state_t *s, f64 frac, i32 index);
-Texture2D create_gradient_texture(i32 height, bar_gradient_t grad);
+void
+spectrum_set_fractional_octave(spectrum_state_t *s, f64 frac, i32 index);
 
-void spectrum_init(spectrum_state_t *s, Wave *wave, Font font);
-void spectrum_destroy(spectrum_state_t *s);
-void spectrum_set_total_windows(spectrum_state_t *s, i32 total);
-i32 spectrum_done(const spectrum_state_t *s);
-void spectrum_handle_resize(spectrum_state_t *s);
-void spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt);
-void spectrum_render_to_texture(spectrum_state_t *s);
-void spectrum_set_peak_hold_seconds(spectrum_state_t *s, f64 seconds);
-void spectrum_reset_peaks(spectrum_state_t *s);
-void spectrum_cycle_frequency_weighting(spectrum_state_t *s);
-void spectrum_cycle_time_weighting(spectrum_state_t *s);
-void spectrum_calibrate_spl(spectrum_state_t *s, f64 target_db_spl);
+Texture2D
+create_gradient_texture(i32 height, bar_gradient_t grad);
 
-#endif
+void
+spectrum_init(spectrum_state_t *s, Wave *wave, Font font);
+
+void
+spectrum_destroy(spectrum_state_t *s);
+
+void
+spectrum_set_total_windows(spectrum_state_t *s, i32 total);
+
+i32
+spectrum_done(const spectrum_state_t *s);
+
+void
+spectrum_handle_resize(spectrum_state_t *s);
+
+void
+spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt);
+
+void
+spectrum_render_to_texture(spectrum_state_t *s);
+
+void
+spectrum_set_peak_hold_seconds(spectrum_state_t *s, f64 seconds);
+
+void
+spectrum_reset_peaks(spectrum_state_t *s);
+
+void
+spectrum_cycle_frequency_weighting(spectrum_state_t *s);
+
+void
+spectrum_cycle_time_weighting(spectrum_state_t *s);
+
+void
+spectrum_calibrate_spl(spectrum_state_t *s, f64 target_db_spl);
+
+#endif // SPECTRUM_H

@@ -4,9 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define internal static      // functions/variables with internal linkage (file-local scope)
+#define internal      static // functions/variables with internal linkage (file-local scope)
 #define local_persist static // variables inside functions that retain their value between calls
-#define global static        // file-scope variables meant to act as globals within that file
+#define global        static // file-scope variables meant to act as globals within that file
 
 // Unsigned integers
 typedef uint8_t u8;
@@ -28,7 +28,7 @@ typedef intptr_t isize;
 typedef unsigned long ul;
 typedef unsigned long long ull;
 
-// Floating-poi32 types
+// Floating-point types
 typedef float f32;
 typedef double f64;
 

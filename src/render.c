@@ -187,14 +187,10 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
         cal_txt = s->spl_calibrated ? "On" : "Off";
     }
 
-    snprintf(modes, sizeof(modes),
-             "Avg: %s (%.0f/%.0f ms) | Pink: %s | Hold: %s | W: %s | T: %s | Cal: %s",
-             avg_label, attack_ms, release_ms,
-             s->pinking_enabled ? "On" : "Off",
-             hold_buf,
-             freq_w,
-             time_w,
-             cal_txt);
+    snprintf(
+        modes, sizeof(modes), "Avg: %s (%.0f/%.0f ms) | Pink: %s | Hold: %s | W: %s | T: %s | Cal: %s", avg_label, attack_ms, release_ms,
+        s->pinking_enabled ? "On" : "Off", hold_buf, freq_w, time_w, cal_txt
+    );
 
     Vector2 info_size = MeasureTextEx(s->font, info, info_text_size, 0);
     Vector2 mode_size = MeasureTextEx(s->font, modes, mode_text_size, 0);
@@ -274,10 +270,7 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
         rms_spl_txt = rmssplbuf;
     }
 
-    snprintf(meters, sizeof(meters),
-             "Peak: %6s dBFS  %6s dBSPL\nRMS:  %6s dBFS  %6s dBSPL",
-             peak_txt, peak_spl_txt,
-             rms_txt, rms_spl_txt);
+    snprintf(meters, sizeof(meters), "Peak: %6s dBFS  %6s dBSPL\nRMS:  %6s dBFS  %6s dBSPL", peak_txt, peak_spl_txt, rms_txt, rms_spl_txt);
 
     Vector2 meter_size = MeasureTextEx(s->font, meters, meter_text_size, 0);
     i32 meter_panel_w = (i32)meter_size.x + ui_px(24);
@@ -355,9 +348,7 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
 
         char cursor_info[192];
         const char *mode = cursor_lock_enabled ? "LOCK" : "HOVER";
-        snprintf(cursor_info, sizeof(cursor_info),
-                 "%s  %s Hz  |  Live %5.1f dB  |  Max %5.1f dB",
-                 mode, fbuf, live_db, max_db);
+        snprintf(cursor_info, sizeof(cursor_info), "%s  %s Hz  |  Live %5.1f dB  |  Max %5.1f dB", mode, fbuf, live_db, max_db);
 
         Vector2 cursor_size = MeasureTextEx(s->font, cursor_info, cursor_text_size, 0);
         i32 cursor_panel_x = ui_px(72);
@@ -375,15 +366,16 @@ draw_overlay(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_lock
     }
 }
 
-void render_draw(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_locked_index, i32 cursor_hover_index, i32 show_paused_overlay)
+void
+render_draw(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_locked_index, i32 cursor_hover_index, i32 show_paused_overlay)
 {
     draw_db_grid(s);
     draw_freq_grid(s);
 
-    DrawTexturePro(s->fft_rt.texture,
-                   (Rectangle){0, 0, (f32)s->fft_rt.texture.width, (f32)-s->fft_rt.texture.height},
-                   (Rectangle){(f32)s->plot_left, (f32)s->plot_top, (f32)s->plot_width, (f32)s->plot_height},
-                   (Vector2){0, 0}, 0, WHITE);
+    DrawTexturePro(
+        s->fft_rt.texture, (Rectangle){0, 0, (f32)s->fft_rt.texture.width, (f32)-s->fft_rt.texture.height},
+        (Rectangle){(f32)s->plot_left, (f32)s->plot_top, (f32)s->plot_width, (f32)s->plot_height}, (Vector2){0, 0}, 0, WHITE
+    );
 
     draw_overlay(s, cursor_lock_enabled, cursor_locked_index, cursor_hover_index);
 
@@ -396,8 +388,7 @@ void render_draw(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_
         const char *paused_text = "Playback paused";
         f32 paused_text_size = ui_text(40.0f);
         Vector2 paused_text_dims = MeasureTextEx(s->font, paused_text, paused_text_size, 0);
-        Vector2 paused_text_pos = {(f32)((sw - (i32)paused_text_dims.x) / 2),
-                                   (f32)((sh - (i32)paused_text_dims.y) / 2)};
+        Vector2 paused_text_pos = {(f32)((sw - (i32)paused_text_dims.x) / 2.0f), (f32)((sh - (i32)paused_text_dims.y) / 2.0f)};
         DrawTextEx(s->font, paused_text, paused_text_pos, paused_text_size, 0, WHITE);
     }
 }

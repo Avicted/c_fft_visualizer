@@ -7,7 +7,6 @@
 
 #include "redefines.h"
 #include "spectrum.h"
-#include "render.h"
 
 typedef struct
 {
@@ -46,12 +45,25 @@ typedef struct
     f32 mic_window[FFT_WINDOW_SIZE]; // sliding window buffer for FFT
 } app_state_t;
 
-void app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_flag, i32 *mic_mode);
-void app_handle_input(app_state_t *app_state);
-i32 app_init_audio_capture(app_state_t *app_state);
-i32 app_platform_init(app_state_t *app_state);
-i32 app_load_audio_data(app_state_t *app_state, const char *input_file);
-void app_run(app_state_t *app_state);
-void app_cleanup(app_state_t *app_state);
+void
+app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_flag, i32 *mic_mode);
 
-#endif
+void
+app_handle_input(app_state_t *app_state);
+
+i32
+app_init_audio_capture(app_state_t *app_state);
+
+i32
+app_platform_init(app_state_t *app_state);
+
+i32
+app_load_audio_data(app_state_t *app_state, const char *input_file);
+
+void
+app_run(app_state_t *app_state);
+
+void
+app_cleanup(app_state_t *app_state);
+
+#endif // APP_H

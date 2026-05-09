@@ -1,44 +1,44 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define WINDOW_WIDTH 1280
+#define WINDOW_WIDTH  1280
 #define WINDOW_HEIGHT 720
-#define UI_SCALE 1.55
-#define MARGIN_LEFT 86
-#define MARGIN_RIGHT 28
-#define MARGIN_TOP 94
+#define UI_SCALE      1.55
+#define MARGIN_LEFT   86
+#define MARGIN_RIGHT  28
+#define MARGIN_TOP    94
 #define MARGIN_BOTTOM 74
-#define GRID_COLOR (Color){40, 40, 40, 96}
+#define GRID_COLOR    (Color){40, 40, 40, 96}
 
 #define BAR_PIXEL_WIDTH 6
-#define BAR_GAP 2
+#define BAR_GAP         2
 
 #define DB_BOTTOM -60.0
-#define DB_TOP 0.0
+#define DB_TOP    0.0
 #define DB_OFFSET 0.0
 
-#define FFT_WINDOW_SIZE 8192
-#define FFT_HOP_SIZE (FFT_WINDOW_SIZE / 16)
-#define HPF_CUTOFF_HZ 1.0
-#define SMOOTH_ATTACK_MS 0.0
+#define FFT_WINDOW_SIZE   8192
+#define FFT_HOP_SIZE      (FFT_WINDOW_SIZE / 16)
+#define HPF_CUTOFF_HZ     1.0
+#define SMOOTH_ATTACK_MS  0.0
 #define SMOOTH_RELEASE_MS 250.0
 
-#define DB_SMOOTH_ATTACK_MS 10.0
+#define DB_SMOOTH_ATTACK_MS  10.0
 #define DB_SMOOTH_RELEASE_MS 250.0
 
-#define PEAK_HOLD_SEC 0.75
+#define PEAK_HOLD_SEC         0.75
 #define PEAK_DECAY_DB_PER_SEC 1.5
-#define EPSILON_POWER 1e-12
+#define EPSILON_POWER         1e-12
 
-#define DEFAULT_SPL_OFFSET_DB 0.0
+#define DEFAULT_SPL_OFFSET_DB            0.0
 #define DEFAULT_CALIBRATOR_TARGET_DB_SPL 94.0
 
-#define METER_READOUT_SMOOTH_MS 350.0
+#define METER_READOUT_SMOOTH_MS  350.0
 #define CURSOR_READOUT_SMOOTH_MS 250.0
 
-#define INPUT_SAMPLE_RATE 44100
+#define INPUT_SAMPLE_RATE       44100
 #define INPUT_FRAMES_PER_BUFFER 1024
-#define INPUT_NUM_CHANNELS 1
+#define INPUT_NUM_CHANNELS      1
 
 // Audio output buffering (raylib/miniaudio). Larger buffers reduce underruns under debugger.
 #define AUDIO_STREAM_BUFFER_SAMPLES 16384
@@ -49,4 +49,4 @@
 // Limit analyser updates in file-playback mode to reduce debugger-induced CPU spikes.
 #define PLAYBACK_ANALYSIS_FPS 15.0
 
-#endif
+#endif // CONFIG_H

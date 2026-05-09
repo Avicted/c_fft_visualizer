@@ -2,32 +2,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
-            "type": "cppdbg",
+            "name": "Launch",
+            "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/c_fft_visualizer",
             "args": [
                 "/home/avic/Music/03. GLBTM (Studio Outtakes).ogg",
                 "--loop"
-                // "--mic"
             ],
-            "stopAtEntry": false,
+            "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": true,
-            "MIMode": "gdb",
-            "preLaunchTask": "Run build.sh",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Set Disassembly Flavor to Intel",
-                    "text": "-gdb-set disassembly-flavor intel",
-                    "ignoreFailures": true
-                }
+            "preLaunchTask": "Build",
+            "initCommands": [
+                "settings set target.x86-disassembly-flavor intel"
             ]
         }
     ]

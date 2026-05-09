@@ -1,5 +1,6 @@
 #include "app.h"
-#include <math.h>
+
+#include "render.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -7,30 +8,32 @@
 internal void
 print_usage(const char *prog)
 {
-    fprintf(stderr,
-            "Usage:      %s <wav-file> [options]\n"
-            "Live Usage: %s --mic\n"
-            "Options:\n"
-            "  -h, --help       Show this help and exit\n"
-            "  -l, --loop       Loop playback\n"
-            "\n"
-            "Controls:\n"
-            "  O   Octave (1/1…1/48)\n"
-            "  C   Colors\n"
-            "  P   Pink compensation\n"
-            "  A   dB averaging\n"
-            "  F   Fast/Slow preset\n"
-            "  H   Peak-hold\n"
-            "  W   Frequency weighting (Z/A/C)\n"
-            "  T   Time weighting (Fast/Slow/Impulse)\n"
-            "  K   Calibrate SPL to 94 dB (mic mode only)\n"
-            "  G   Peak-find (max-hold)\n"
-            "  Left/Right  Step locked band\n"
-            "  Mouse Left  Toggle nearest-band lock\n"
-            "  R   Reset peaks/max-hold\n"
-            "  Space Pause/Resume (file) or Freeze (mic)\n"
-            "  F11 Fullscreen\n",
-            prog, prog);
+    fprintf(
+        stderr,
+        "Usage:      %s <wav-file> [options]\n"
+        "Live Usage: %s --mic\n"
+        "Options:\n"
+        "  -h, --help       Show this help and exit\n"
+        "  -l, --loop       Loop playback\n"
+        "\n"
+        "Controls:\n"
+        "  O   Octave (1/1…1/48)\n"
+        "  C   Colors\n"
+        "  P   Pink compensation\n"
+        "  A   dB averaging\n"
+        "  F   Fast/Slow preset\n"
+        "  H   Peak-hold\n"
+        "  W   Frequency weighting (Z/A/C)\n"
+        "  T   Time weighting (Fast/Slow/Impulse)\n"
+        "  K   Calibrate SPL to 94 dB (mic mode only)\n"
+        "  G   Peak-find (max-hold)\n"
+        "  Left/Right  Step locked band\n"
+        "  Mouse Left  Toggle nearest-band lock\n"
+        "  R   Reset peaks/max-hold\n"
+        "  Space Pause/Resume (file) or Freeze (mic)\n"
+        "  F11 Fullscreen\n",
+        prog, prog
+    );
 }
 
 internal const char *
@@ -94,8 +97,7 @@ cursor_index_from_mouse(const spectrum_state_t *s)
     Vector2 mouse = GetMousePosition();
     i32 mx = (i32)mouse.x;
     i32 my = (i32)mouse.y;
-    if (mx < s->plot_left || mx >= s->plot_left + s->plot_width ||
-        my < s->plot_top || my >= s->plot_top + s->plot_height)
+    if (mx < s->plot_left || mx >= s->plot_left + s->plot_width || my < s->plot_top || my >= s->plot_top + s->plot_height)
     {
         return -1;
     }
@@ -148,7 +150,8 @@ find_max_hold_peak_index(const spectrum_state_t *s)
     return best_index;
 }
 
-void app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_flag, i32 *mic_mode)
+void
+app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_flag, i32 *mic_mode)
 {
     *input_file = NULL;
     *loop_flag = 0;
@@ -197,7 +200,8 @@ void app_parse_input_args(i32 argc, char **argv, char **input_file, i32 *loop_fl
     }
 }
 
-void app_handle_input(app_state_t *app_state)
+void
+app_handle_input(app_state_t *app_state)
 {
     if (IsKeyPressed(KEY_F11))
     {
@@ -230,9 +234,7 @@ void app_handle_input(app_state_t *app_state)
         }
 
         f64 frac = FRACTIONAL_OCTAVES[app_state->fractional_octave_index_selected];
-        spectrum_set_fractional_octave(&app_state->spectrum_state,
-                                       frac,
-                                       app_state->fractional_octave_index_selected);
+        spectrum_set_fractional_octave(&app_state->spectrum_state, frac, app_state->fractional_octave_index_selected);
 
         spectrum_handle_resize(&app_state->spectrum_state);
         app_sync_cursor_indices(app_state);
@@ -275,9 +277,7 @@ void app_handle_input(app_state_t *app_state)
             s->db_smooth_release_ms = 1200.0;
         }
 
-        TraceLog(LOG_INFO, "Averaging preset: %s (attack %.0f ms, release %.0f ms)",
-                 fast ? "Fast" : "Slow",
-                 s->db_smooth_attack_ms, s->db_smooth_release_ms);
+        TraceLog(LOG_INFO, "Averaging preset: %s (attack %.0f ms, release %.0f ms)", fast ? "Fast" : "Slow", s->db_smooth_attack_ms, s->db_smooth_release_ms);
     }
 
     if (IsKeyPressed(KEY_H))
@@ -521,12 +521,9 @@ mic_ring_discard_all(app_state_t *app)
 
 internal i32
 audio_callback(
-    const void *input_buffer,
-    void *output_buffer,
-    unsigned long frames_per_buffer,
-    const PaStreamCallbackTimeInfo *time_info,
-    PaStreamCallbackFlags status_flags,
-    void *user_data)
+    const void *input_buffer, void *output_buffer, unsigned long frames_per_buffer, const PaStreamCallbackTimeInfo *time_info,
+    PaStreamCallbackFlags status_flags, void *user_data
+)
 {
     (void)output_buffer;
     (void)time_info;
@@ -571,7 +568,8 @@ audio_callback(
     return (int)paContinue;
 }
 
-i32 app_init_audio_capture(app_state_t *app_state)
+i32
+app_init_audio_capture(app_state_t *app_state)
 {
     if (app_state->selected_device_stream)
     {
@@ -636,14 +634,8 @@ i32 app_init_audio_capture(app_state_t *app_state)
     }
 
     err = Pa_OpenStream(
-        &app_state->selected_device_stream,
-        &in_params,
-        NULL,
-        requested_sample_rate,
-        (ul)INPUT_FRAMES_PER_BUFFER,
-        paClipOff,
-        audio_callback,
-        app_state);
+        &app_state->selected_device_stream, &in_params, NULL, requested_sample_rate, (ul)INPUT_FRAMES_PER_BUFFER, paClipOff, audio_callback, app_state
+    );
 
     if (err != paNoError)
     {
@@ -697,7 +689,8 @@ i32 app_init_audio_capture(app_state_t *app_state)
     return 0;
 }
 
-i32 app_platform_init(app_state_t *app_state)
+i32
+app_platform_init(app_state_t *app_state)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     SetAudioStreamBufferSizeDefault(AUDIO_STREAM_BUFFER_SAMPLES);
@@ -714,12 +707,16 @@ i32 app_platform_init(app_state_t *app_state)
     app_state->cursor_hover_index = -1;
     app_state->input_sample_rate = (f64)INPUT_SAMPLE_RATE;
     app_state->fractional_octave_index_selected = 4; // Default to 1/24 octave
-    TraceLog(LOG_INFO, "Keys: O=Frac octave, P=Pink comp, A=dB avg, F=Avg preset, H=Peak hold, W=Weighting, T=Time weighting, K=Calibrate, G=Peak-find, Arrows=Step lock, Click=Toggle lock, R=Reset peaks/max-hold, Space=Pause/Resume (file) or Freeze (mic)");
+    TraceLog(
+        LOG_INFO, "Keys: O=Frac octave, P=Pink comp, A=dB avg, F=Avg preset, H=Peak hold, W=Weighting, T=Time weighting, K=Calibrate, G=Peak-find, Arrows=Step "
+                  "lock, Click=Toggle lock, R=Reset peaks/max-hold, Space=Pause/Resume (file) or Freeze (mic)"
+    );
 
     return 0;
 }
 
-i32 app_load_audio_data(app_state_t *app_state, const char *input_file)
+i32
+app_load_audio_data(app_state_t *app_state, const char *input_file)
 {
     app_state->wave = LoadWave(input_file);
     if (app_state->wave.frameCount == 0)
@@ -748,7 +745,8 @@ i32 app_load_audio_data(app_state_t *app_state, const char *input_file)
     return 0;
 }
 
-void app_run(app_state_t *app_state)
+void
+app_run(app_state_t *app_state)
 {
     f64 playback_analysis_accum = 0.0;
     f64 *interp_from_bar = NULL;
@@ -814,8 +812,7 @@ void app_run(app_state_t *app_state)
                 f64 *new_to_peak = (f64 *)calloc((size_t)n, sizeof(f64));
                 f64 *new_curr_peak = (f64 *)calloc((size_t)n, sizeof(f64));
 
-                if (new_from_bar && new_to_bar && new_curr_bar &&
-                    new_from_peak && new_to_peak && new_curr_peak)
+                if (new_from_bar && new_to_bar && new_curr_bar && new_from_peak && new_to_peak && new_curr_peak)
                 {
                     free(interp_from_bar);
                     free(interp_to_bar);
@@ -950,11 +947,7 @@ void app_run(app_state_t *app_state)
 
                 BeginDrawing();
                 ClearBackground(BLACK);
-                render_draw(&app_state->spectrum_state,
-                            app_state->cursor_lock_enabled,
-                            app_state->cursor_locked_index,
-                            app_state->cursor_hover_index,
-                            0);
+                render_draw(&app_state->spectrum_state, app_state->cursor_lock_enabled, app_state->cursor_locked_index, app_state->cursor_hover_index, 0);
                 EndDrawing();
                 continue;
             }
@@ -995,18 +988,13 @@ void app_run(app_state_t *app_state)
             for (ul w = 0; w < max_windows_this_frame; w++)
             {
                 // Shift left by hop
-                memmove(app_state->mic_window,
-                        app_state->mic_window + hop,
-                        (FFT_WINDOW_SIZE - hop) * sizeof(f32));
+                memmove(app_state->mic_window, app_state->mic_window + hop, (FFT_WINDOW_SIZE - hop) * sizeof(f32));
 
                 // Append hop new samples (pad with zeros if short)
-                ul got = mic_ring_pop(app_state,
-                                      app_state->mic_window + (FFT_WINDOW_SIZE - hop),
-                                      (ul)hop);
+                ul got = mic_ring_pop(app_state, app_state->mic_window + (FFT_WINDOW_SIZE - hop), (ul)hop);
                 if (got < (ul)hop)
                 {
-                    memset(app_state->mic_window + (FFT_WINDOW_SIZE - hop) + got, 0,
-                           (size_t)((ul)hop - got) * sizeof(f32));
+                    memset(app_state->mic_window + (FFT_WINDOW_SIZE - hop) + got, 0, (size_t)((ul)hop - got) * sizeof(f32));
                 }
 
                 // One-window update: present current mic_window as the "sample buffer"
@@ -1032,11 +1020,10 @@ void app_run(app_state_t *app_state)
 
         BeginDrawing();
         ClearBackground(BLACK);
-        render_draw(&app_state->spectrum_state,
-                    app_state->cursor_lock_enabled,
-                    app_state->cursor_locked_index,
-                    app_state->cursor_hover_index,
-                    (!app_state->mic_mode && app_state->freeze_enabled));
+        render_draw(
+            &app_state->spectrum_state, app_state->cursor_lock_enabled, app_state->cursor_locked_index, app_state->cursor_hover_index,
+            (!app_state->mic_mode && app_state->freeze_enabled)
+        );
         EndDrawing();
     }
 
@@ -1050,7 +1037,8 @@ void app_run(app_state_t *app_state)
     app_state->running = false;
 }
 
-void app_cleanup(app_state_t *app_state)
+void
+app_cleanup(app_state_t *app_state)
 {
     if (app_state->main_font.texture.id != 0)
     {

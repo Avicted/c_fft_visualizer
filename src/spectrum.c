@@ -3,9 +3,14 @@
 #include <math.h>
 #include "spectrum.h"
 
-internal void compute_bar_targets(spectrum_state_t *s);
-internal void update_meter_time_weighting_coeffs(spectrum_state_t *s);
-internal void update_max_hold_trace(spectrum_state_t *s);
+internal void
+compute_bar_targets(spectrum_state_t *s);
+
+internal void
+update_meter_time_weighting_coeffs(spectrum_state_t *s);
+
+internal void
+update_max_hold_trace(spectrum_state_t *s);
 
 internal f64
 frequency_weighting_db(i32 mode, f64 freq_hz)
@@ -17,9 +22,7 @@ frequency_weighting_db(i32 mode, f64 freq_hz)
 
     if (mode == FREQ_WEIGHTING_A)
     {
-        f64 denom = (f2 + 20.6 * 20.6) *
-                    sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) *
-                    (f2 + c12200_2);
+        f64 denom = (f2 + 20.6 * 20.6) * sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) * (f2 + c12200_2);
         if (denom <= 0.0)
         {
             return 0.0;
@@ -136,15 +139,11 @@ db_to_volume(f64 db, f64 epsilon_power, f64 db_offset)
 }
 
 const f64 FRACTIONAL_OCTAVES[NUM_FRACTIONAL_OCTAVES] = {
-    1.0,
-    1.0 / 3.0,
-    1.0 / 6.0,
-    1.0 / 12.0,
-    1.0 / 24.0,
-    1.0 / 48.0,
+    1.0, 1.0 / 3.0, 1.0 / 6.0, 1.0 / 12.0, 1.0 / 24.0, 1.0 / 48.0,
 };
 
-void spectrum_set_fractional_octave(spectrum_state_t *s, f64 frac, i32 index)
+void
+spectrum_set_fractional_octave(spectrum_state_t *s, f64 frac, i32 index)
 {
     if (frac <= 0.0)
     {
@@ -312,7 +311,8 @@ reallocate_bars_if_needed(spectrum_state_t *s)
     return 1;
 }
 
-void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
+void
+spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
 {
     memset(s, 0, sizeof(*s));
 
@@ -394,7 +394,8 @@ void spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     update_meter_time_weighting_coeffs(s);
 }
 
-void spectrum_destroy(spectrum_state_t *s)
+void
+spectrum_destroy(spectrum_state_t *s)
 {
     if (s->gradient_tex.id)
     {
@@ -412,19 +413,22 @@ void spectrum_destroy(spectrum_state_t *s)
     }
 }
 
-void spectrum_set_total_windows(spectrum_state_t *s, i32 total)
+void
+spectrum_set_total_windows(spectrum_state_t *s, i32 total)
 {
     s->total_windows = total;
     s->window_index = 0;
     s->accumulator = 0.0;
 }
 
-i32 spectrum_done(const spectrum_state_t *s)
+i32
+spectrum_done(const spectrum_state_t *s)
 {
     return s->window_index >= s->total_windows;
 }
 
-void spectrum_handle_resize(spectrum_state_t *s)
+void
+spectrum_handle_resize(spectrum_state_t *s)
 {
     i32 sw = GetScreenWidth();
     i32 sh = GetScreenHeight();
@@ -466,7 +470,9 @@ compute_fft_window(spectrum_state_t *s, f32 *samples, Wave *wave)
         if (si < total_samples)
         {
             if (wave->channels == 1)
+            {
                 mono = samples[si];
+            }
             else
             {
                 f32 a = samples[si];
@@ -728,7 +734,8 @@ update_max_hold_trace(spectrum_state_t *s)
     }
 }
 
-void spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt)
+void
+spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt)
 {
     if (spectrum_done(s))
     {
@@ -794,7 +801,8 @@ void spectrum_update(spectrum_state_t *s, Wave *wave, f32 *samples, f64 dt)
     update_max_hold_trace(s);
 }
 
-void spectrum_render_to_texture(spectrum_state_t *s)
+void
+spectrum_render_to_texture(spectrum_state_t *s)
 {
     BeginTextureMode(s->fft_rt);
     ClearBackground(BLACK);
@@ -830,10 +838,8 @@ void spectrum_render_to_texture(spectrum_state_t *s)
     }
 
     Color peak_color = (Color){
-        s->bar_gradients[s->bar_gradient_index].top.r,
-        s->bar_gradients[s->bar_gradient_index].top.g,
-        s->bar_gradients[s->bar_gradient_index].top.b,
-        200};
+        s->bar_gradients[s->bar_gradient_index].top.r, s->bar_gradients[s->bar_gradient_index].top.g, s->bar_gradients[s->bar_gradient_index].top.b, 200
+    };
 
     Color max_hold_color = (Color){255, 255, 255, 100};
 
@@ -885,7 +891,8 @@ void spectrum_render_to_texture(spectrum_state_t *s)
     EndTextureMode();
 }
 
-void spectrum_set_peak_hold_seconds(spectrum_state_t *s, f64 seconds)
+void
+spectrum_set_peak_hold_seconds(spectrum_state_t *s, f64 seconds)
 {
     f64 old = s->peak_hold_seconds;
     s->peak_hold_seconds = seconds;
@@ -933,7 +940,8 @@ void spectrum_set_peak_hold_seconds(spectrum_state_t *s, f64 seconds)
     }
 }
 
-void spectrum_reset_peaks(spectrum_state_t *s)
+void
+spectrum_reset_peaks(spectrum_state_t *s)
 {
     for (i32 b = 0; b < s->num_bars; b++)
     {
@@ -943,18 +951,21 @@ void spectrum_reset_peaks(spectrum_state_t *s)
     }
 }
 
-void spectrum_cycle_frequency_weighting(spectrum_state_t *s)
+void
+spectrum_cycle_frequency_weighting(spectrum_state_t *s)
 {
     s->frequency_weighting_mode = (s->frequency_weighting_mode + 1) % NUM_FREQ_WEIGHTING_MODES;
 }
 
-void spectrum_cycle_time_weighting(spectrum_state_t *s)
+void
+spectrum_cycle_time_weighting(spectrum_state_t *s)
 {
     s->time_weighting_mode = (s->time_weighting_mode + 1) % NUM_TIME_WEIGHTING_MODES;
     update_meter_time_weighting_coeffs(s);
 }
 
-void spectrum_calibrate_spl(spectrum_state_t *s, f64 target_db_spl)
+void
+spectrum_calibrate_spl(spectrum_state_t *s, f64 target_db_spl)
 {
     if (!s->spl_features_enabled)
     {

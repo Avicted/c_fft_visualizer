@@ -1,13 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <raylib.h>
 
-#include "app.c"
-#include "spectrum.c"
-#include "render.c"
+#include "app.h"
+#include "spectrum.h"
 
-i32 main(i32 argc, char **argv)
+i32
+main(i32 argc, char **argv)
 {
     app_state_t *app_state = (app_state_t *)calloc(1, sizeof(app_state_t));
     if (!app_state)

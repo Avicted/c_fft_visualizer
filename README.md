@@ -19,6 +19,19 @@ sudo pacman -S clang raylib fftw portaudio
 
 ## Build and run
 ```bash
+make build
+
+make run
+
+make clean
+
+make format
+
+make help
+```
+
+### Alternative: Using build script
+```bash
 chmod +x build.sh
 ./build.sh
 
