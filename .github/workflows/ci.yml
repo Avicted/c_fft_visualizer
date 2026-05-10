@@ -15,8 +15,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo add-apt-repository universe -y
+          sudo add-apt-repository ppa:texus/raylib -y
           sudo apt-get update
-          sudo apt-get install -y clang clang-tidy clang-tools libraylib-dev libfftw3-dev portaudio19-dev
+          sudo apt-get install -y \
+            clang clang-tidy clang-tools \
+            libraylib5-dev \
+            libfftw3-dev portaudio19-dev \
+            libasound2-dev mesa-common-dev libx11-dev \
+            libxrandr-dev libxi-dev xorg-dev \
+            libgl1-mesa-dev libglu1-mesa-dev
 
       - name: Release build
         run: make build
