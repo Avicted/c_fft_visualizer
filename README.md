@@ -14,10 +14,36 @@ Real-time FFT spectrum analyzer for audio files and live microphone input. Built
 
 
 ## Prerequisites
+
 **Arch Linux**
 
 ```
 sudo pacman -S clang raylib fftw portaudio
+```
+
+**Debian/Ubuntu (24.04+)**
+
+```
+sudo apt-get install -y clang libraylib-dev libfftw3-dev portaudio19-dev
+```
+
+**Debian/Ubuntu (< 24.04)**
+
+`libraylib-dev` is only in Ubuntu 24.04+/Debian 13+. For older releases, install raylib from source:
+
+```
+git clone https://github.com/raysan5/raylib.git /tmp/raylib
+cd /tmp/raylib && mkdir build && cd build
+cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+sudo make install
+sudo ldconfig
+```
+
+Then install the remaining dependencies:
+
+```
+sudo apt-get install -y clang libfftw3-dev portaudio19-dev
 ```
 
 ## Build
