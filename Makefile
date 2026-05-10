@@ -14,9 +14,17 @@ PROJECT_NAME := C FFT Visualizer
 BUILD_DIR := build
 EXECUTABLE := $(BUILD_DIR)/c_fft_visualizer
 
+# LLVM toolchain version
+LLVM_VERSION ?= 22
+
+# Try versioned binaries first, then fall back to unversioned ones
+CC := $(shell command -v clang-$(LLVM_VERSION) 2>/dev/null || command -v clang)
+CLANG_FORMAT := $(shell command -v clang-format-$(LLVM_VERSION) 2>/dev/null || command -v clang-format)
+CLANG_TIDY := $(shell command -v clang-tidy-$(LLVM_VERSION) 2>/dev/null || command -v clang-tidy)
+SCAN_BUILD := $(shell command -v scan-build-$(LLVM_VERSION) 2>/dev/null || command -v scan-build)
+
 # Compiler settings
-CC := clang
-CFLAGS := -std=c99 -O3 -march=native -Wall -Wextra -Werror -pedantic
+CFLAGS := -std=c99 -O3 -Wall -Wextra -Werror -pedantic
 LDLIBS := -lm -lraylib -lfftw3 -lportaudio -lpthread
 INCLUDE_DIRS := -I./include
 
@@ -100,26 +108,27 @@ clean: ## Remove build directory
 ##@ Code Quality
 format: ## Format code using clang-format
 	@printf "$(YELLOW)Formatting code...$(RESET)\n"
-	@find src include \( -name "*.c" -o -name "*.h" \) -exec clang-format -i --style=file {} +
+	@find src include \( -name "*.c" -o -name "*.h" \) -exec $(CLANG_FORMAT) -i --style=file {} +
 	@printf "$(GREEN)✓ Code formatted$(RESET)\n"
 
 lint: format-check build tidy ## Run full lint suite (format, build, clang-tidy)
 	@printf "$(GREEN)✓ All linting passed$(RESET)\n"
 
 format-check: ## Check if code is correctly formatted (exits non-zero if not)
+	@($(CLANG_FORMAT) --version)
 	@printf "$(YELLOW)Checking formatting...$(RESET)\n"
-	@find src include \( -name "*.c" -o -name "*.h" \) -exec clang-format --dry-run --Werror --style=file {} +
+	@find src include \( -name "*.c" -o -name "*.h" \) -exec $(CLANG_FORMAT) --dry-run --Werror --style=file {} +
 	@printf "$(GREEN)✓ Code is properly formatted$(RESET)\n"
 
 tidy: build ## Run clang-tidy static analysis
 	@printf "$(YELLOW)Running clang-tidy...$(RESET)\n"
-	@clang-tidy --warnings-as-errors='*' -p $(BUILD_DIR) $(SRC_FILES)
+	@$(CLANG_TIDY) --warnings-as-errors='*' -p $(BUILD_DIR) $(SRC_FILES)
 	@printf "$(GREEN)✓ clang-tidy passed$(RESET)\n"
 
 analyze: ## Run clang static analyzer (scan-build)
 	@printf "$(YELLOW)Running static analysis...$(RESET)\n"
 	@make clean
-	@scan-build --use-cc=$(CC) --status-bugs make build
+	@$(SCAN_BUILD) --use-cc=$(CC) --status-bugs make build
 	@printf "$(GREEN)✓ Static analysis passed$(RESET)\n"
 
 check: debug ## Run valgrind on debug build
@@ -138,14 +147,16 @@ info: ## Display project information
 	@printf "Compiler: $(CC)\n"
 	@printf "Flags: $(CFLAGS)\n"
 	@printf "Libraries: $(LDLIBS)\n"
+	@printf "LLVM Version: $(LLVM_VERSION)\n"
 	@printf "Source files: $(SRC_FILES)\n"
 	@printf "Executable: $(EXECUTABLE)\n"
 	@printf "\n"
 	@printf "Usage examples:\n"
-	@printf "  $(CYAN)make build$(RESET)     # Build the project\n"
-	@printf "  $(CYAN)make run$(RESET)       # Build and run\n"
-	@printf "  $(CYAN)make clean$(RESET)     # Clean build files\n"
-	@printf "  $(CYAN)make format$(RESET)    # Format code\n"
+	@printf "  $(CYAN)make build$(RESET)                # Build the project\n"
+	@printf "  $(CYAN)make run$(RESET)                  # Build and run\n"
+	@printf "  $(CYAN)make clean$(RESET)                # Clean build files\n"
+	@printf "  $(CYAN)make format$(RESET)               # Format code\n"
+	@printf "  $(CYAN)make LLVM_VERSION=21 build$(RESET) # Use LLVM 21\n"
 	@printf "\n"
 
 .SILENT: info help

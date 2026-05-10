@@ -2,28 +2,51 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
   build-and-lint:
     runs-on: ubuntu-24.04
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install LLVM 22
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22
 
       - name: Install dependencies
         run: |
           sudo add-apt-repository universe -y
           sudo add-apt-repository ppa:texus/raylib -y
+
           sudo apt-get update
+
           sudo apt-get install -y \
-            clang clang-tidy clang-tools \
+            clang-22 \
+            clang-format-22 \
+            clang-tidy-22 \
+            clang-tools-22 \
             libraylib5-dev \
-            libfftw3-dev portaudio19-dev \
-            libasound2-dev mesa-common-dev libx11-dev \
-            libxrandr-dev libxi-dev xorg-dev \
-            libgl1-mesa-dev libglu1-mesa-dev
+            libfftw3-dev \
+            portaudio19-dev \
+            libasound2-dev \
+            mesa-common-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxi-dev \
+            xorg-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            valgrind
+
+      - name: Verify LLVM versions
+        run: |
+          clang-22 --version
+          clang-format-22 --version
+          clang-tidy-22 --version
 
       - name: Release build
         run: make build
