@@ -2,6 +2,7 @@ main
 
 build/
 .vscode/settings.json
+.tmp/
 
 *.wav
 *.mp3

@@ -8,7 +8,8 @@
 #define MARGIN_RIGHT  28
 #define MARGIN_TOP    94
 #define MARGIN_BOTTOM 74
-#define GRID_COLOR    (Color){40, 40, 40, 96}
+
+#define GRID_COLOR (Color){40, 40, 40, 96}
 
 #define BAR_PIXEL_WIDTH 6
 #define BAR_GAP         2
