@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "=== Pre-commit: checking format ==="
+if ! make format-check; then
+    echo "ERROR: Code is not formatted. Run 'make format' and stage the changes."
+    exit 1
+fi
+
+echo "=== Pre-commit: debug build ==="
+if ! make debug; then
+    echo "ERROR: Debug build failed. Fix compilation errors before committing."
+    exit 1
+fi
+
+echo "=== Pre-commit: all checks passed ==="

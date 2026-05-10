@@ -1,4 +1,4 @@
-.PHONY: help build run clean format lint
+.PHONY: help build run clean format lint debug debug-run tidy analyze format-check check install-hooks
 
 .DEFAULT_GOAL := help
 
@@ -24,6 +24,13 @@ INCLUDE_DIRS := -I./include
 SRC_FILES := $(wildcard src/*.c)
 OBJ_FILES := $(patsubst src/%.c, $(BUILD_DIR)/%.o, $(SRC_FILES))
 COMPILE_DB := $(BUILD_DIR)/compile_commands.json
+
+# Debug build settings
+DEBUG_BUILD_DIR := build/debug
+DEBUG_EXECUTABLE := $(DEBUG_BUILD_DIR)/c_fft_visualizer
+DEBUG_CFLAGS := -std=c99 -O0 -g -fsanitize=address,undefined -Wall -Wextra -Werror -pedantic
+DEBUG_LDLIBS := $(LDLIBS) -fsanitize=address,undefined
+DEBUG_OBJ_FILES := $(patsubst src/%.c, $(DEBUG_BUILD_DIR)/%.o, $(SRC_FILES))
 
 ##@ Help
 help: ## Display this help message
@@ -61,10 +68,28 @@ $(BUILD_DIR)/%.o: src/%.c
 	@printf "$(YELLOW)Compiling $<...$(RESET)\n"
 	@$(CC) $(CFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
+##@ Debug Build
+debug: $(DEBUG_EXECUTABLE) ## Build with address/undefined sanitizers
+	@printf "$(GREEN)✓ Debug build complete$(RESET)\n"
+
+$(DEBUG_EXECUTABLE): $(DEBUG_OBJ_FILES)
+	@printf "$(YELLOW)Linking $(DEBUG_EXECUTABLE) [debug]...$(RESET)\n"
+	@$(CC) $(DEBUG_CFLAGS) $(INCLUDE_DIRS) -o $@ $^ $(DEBUG_LDLIBS)
+	@cp -r assets $(DEBUG_BUILD_DIR)
+
+$(DEBUG_BUILD_DIR)/%.o: src/%.c
+	@mkdir -p $(DEBUG_BUILD_DIR)
+	@printf "$(YELLOW)Compiling $< [debug]...$(RESET)\n"
+	@$(CC) $(DEBUG_CFLAGS) $(INCLUDE_DIRS) -c $< -o $@
+
 ##@ Running
 run: build ## Run the application
 	@printf "$(GREEN)Running $(PROJECT_NAME)...$(RESET)\n"
 	@./$(EXECUTABLE)
+
+debug-run: debug ## Build and run debug build
+	@printf "$(GREEN)Running $(PROJECT_NAME) [debug]...$(RESET)\n"
+	@./$(DEBUG_EXECUTABLE)
 
 ##@ Cleaning
 clean: ## Remove build directory
@@ -78,8 +103,33 @@ format: ## Format code using clang-format
 	@find src include \( -name "*.c" -o -name "*.h" \) -exec clang-format -i --style=file {} +
 	@printf "$(GREEN)✓ Code formatted$(RESET)\n"
 
-lint: build ## Lint code by building (clang with -Werror ensures no warnings)
-	@printf "$(GREEN)✓ Code passes linting (no warnings/errors)$(RESET)\n"
+lint: format-check build tidy ## Run full lint suite (format, build, clang-tidy)
+	@printf "$(GREEN)✓ All linting passed$(RESET)\n"
+
+format-check: ## Check if code is correctly formatted (exits non-zero if not)
+	@printf "$(YELLOW)Checking formatting...$(RESET)\n"
+	@find src include \( -name "*.c" -o -name "*.h" \) -exec clang-format --dry-run --Werror --style=file {} +
+	@printf "$(GREEN)✓ Code is properly formatted$(RESET)\n"
+
+tidy: build ## Run clang-tidy static analysis
+	@printf "$(YELLOW)Running clang-tidy...$(RESET)\n"
+	@clang-tidy --warnings-as-errors='*' -p $(BUILD_DIR) $(SRC_FILES)
+	@printf "$(GREEN)✓ clang-tidy passed$(RESET)\n"
+
+analyze: ## Run clang static analyzer (scan-build)
+	@printf "$(YELLOW)Running static analysis...$(RESET)\n"
+	@make clean
+	@scan-build --use-cc=$(CC) --status-bugs make build
+	@printf "$(GREEN)✓ Static analysis passed$(RESET)\n"
+
+check: debug ## Run valgrind on debug build
+	@printf "$(YELLOW)Running valgrind...$(RESET)\n"
+	@valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 ./$(DEBUG_EXECUTABLE) --mic 2>&1 || true
+
+install-hooks: ## Install git pre-commit hook
+	@printf "$(YELLOW)Installing git hooks...$(RESET)\n"
+	@ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
+	@printf "$(GREEN)✓ Pre-commit hook installed$(RESET)\n"
 
 ##@ Project Information
 info: ## Display project information

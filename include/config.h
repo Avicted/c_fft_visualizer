@@ -13,7 +13,7 @@
 #define BAR_PIXEL_WIDTH 6
 #define BAR_GAP         2
 
-#define DB_BOTTOM -60.0
+#define DB_BOTTOM (-60.0)
 #define DB_TOP    0.0
 #define DB_OFFSET 0.0
 

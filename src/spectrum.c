@@ -336,7 +336,7 @@ spectrum_init(spectrum_state_t *s, Wave *wave, Font font)
     s->hop_size = FFT_HOP_SIZE;
     s->seconds_per_window = (f64)s->hop_size / (f64)wave->sampleRate;
     s->font = font;
-    s->sample_rate = wave->sampleRate;
+    s->sample_rate = (i32)wave->sampleRate;
 
     for (i32 i = 0; i < FFT_WINDOW_SIZE; i++)
     {

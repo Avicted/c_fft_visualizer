@@ -611,10 +611,11 @@ app_init_audio_capture(app_state_t *app_state)
     const char *env = getenv("PA_DEVICE_INDEX");
     if (env)
     {
-        i32 idx = atoi(env);
-        if (idx >= 0 && idx < num_devices)
+        char *endptr = NULL;
+        long val = strtol(env, &endptr, 10);
+        if (endptr != env && *endptr == '\0' && val >= 0 && val < (long)num_devices)
         {
-            selected_device_index = idx;
+            selected_device_index = (i32)val;
         }
     }
 
@@ -873,7 +874,7 @@ app_run(app_state_t *app_state)
 
                 if (interp_ready)
                 {
-                    for (i32 b = 0; b < s->num_bars; b++)
+                    for (i32 b = 0; b < interp_bar_count; b++)
                     {
                         interp_from_bar[b] = interp_curr_bar[b];
                         interp_to_bar[b] = s->bar_smoothed[b];
@@ -907,7 +908,7 @@ app_run(app_state_t *app_state)
                     alpha = 1.0;
                 }
 
-                for (i32 b = 0; b < s->num_bars; b++)
+                for (i32 b = 0; b < interp_bar_count; b++)
                 {
                     interp_curr_bar[b] = interp_from_bar[b] + (interp_to_bar[b] - interp_from_bar[b]) * alpha;
                     interp_curr_peak[b] = interp_from_peak[b] + (interp_to_peak[b] - interp_from_peak[b]) * alpha;

@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang clang-tidy clang-tools libraylib-dev libfftw3-dev portaudio19-dev
+
+      - name: Release build
+        run: make build
+
+      - name: Debug build
+        run: make debug
+
+      - name: Format check
+        run: make format-check
+
+      - name: clang-tidy
+        run: make tidy
+
+      - name: Static analysis
+        run: make analyze

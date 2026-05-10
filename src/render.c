@@ -52,8 +52,9 @@ draw_db_grid(const spectrum_state_t *s)
     const f32 grid_label_size = ui_text(20.0f);
     const i32 label_left_pad = ui_px(16);
 
-    for (f64 db = DB_BOTTOM; db <= DB_TOP; db += 12.0)
+    for (i32 db_i = (i32)DB_BOTTOM; db_i <= (i32)DB_TOP; db_i += 12)
     {
+        f64 db = (f64)db_i;
         f64 norm = (db - DB_BOTTOM) / (DB_TOP - DB_BOTTOM);
         i32 y = s->plot_top + (i32)(s->plot_height - norm * s->plot_height);
         DrawLine(s->plot_left, y, s->plot_left + s->plot_width, y, GRID_COLOR);
@@ -388,7 +389,7 @@ render_draw(const spectrum_state_t *s, i32 cursor_lock_enabled, i32 cursor_locke
         const char *paused_text = "Playback paused";
         f32 paused_text_size = ui_text(40.0f);
         Vector2 paused_text_dims = MeasureTextEx(s->font, paused_text, paused_text_size, 0);
-        Vector2 paused_text_pos = {(f32)((sw - (i32)paused_text_dims.x) / 2.0f), (f32)((sh - (i32)paused_text_dims.y) / 2.0f)};
+        Vector2 paused_text_pos = {(f32)sw / 2.0f - paused_text_dims.x / 2.0f, (f32)sh / 2.0f - paused_text_dims.y / 2.0f};
         DrawTextEx(s->font, paused_text, paused_text_pos, paused_text_size, 0, WHITE);
     }
 }
